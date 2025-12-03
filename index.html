@@ -42,32 +42,60 @@
     <!-- Firebase Initialization -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Configuration ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-vessel-app';
+        // ==========================================
+        //  CONFIGURATION SECTION - PASTE KEYS HERE
+        // ==========================================
+        
+        // 1. Go to Firebase Console > Project Settings > General > Your Apps
+        // 2. Select "Config" and copy the object (apiKey, authDomain, etc)
+        // 3. Paste it inside the variable below:
+        
+const firebaseConfig = {
+  apiKey: "AIzaSyCChjLWOazjQzLp6JSvdFw3ocWb097Qqlc",
+  authDomain: "vsltrker.firebaseapp.com",
+  projectId: "vsltrker",
+  storageBucket: "vsltrker.firebasestorage.app",
+  messagingSenderId: "623033107164",
+  appId: "1:623033107164:web:fa7ccf7325346e58536a19",
+  measurementId: "G-LNYMSYRWP8"
+};
 
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
+        const appId = 'vessel-schedule-app'; // You can leave this as is
 
-            window.db = db;
-            window.auth = auth;
-            window.collection = collection;
-            window.addDoc = addDoc;
-            window.updateDoc = updateDoc;
-            window.deleteDoc = deleteDoc;
-            window.doc = doc;
-            window.onSnapshot = onSnapshot;
-            window.appId = appId;
-            window.signInAnonymously = signInAnonymously;
-            window.signInWithCustomToken = signInWithCustomToken;
-            window.onAuthStateChanged = onAuthStateChanged;
+        // ==========================================
+        //  END CONFIGURATION
+        // ==========================================
+
+        let isFirebaseInitialized = false;
+
+        // Check if config is filled out (has at least an apiKey)
+        if (firebaseConfig.apiKey) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                // Expose to window for React component to use
+                window.db = db;
+                window.auth = auth;
+                window.collection = collection;
+                window.addDoc = addDoc;
+                window.updateDoc = updateDoc;
+                window.deleteDoc = deleteDoc;
+                window.doc = doc;
+                window.onSnapshot = onSnapshot;
+                window.appId = appId;
+                window.signInAnonymously = signInAnonymously;
+                window.onAuthStateChanged = onAuthStateChanged;
+                isFirebaseInitialized = true;
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+            }
         } else {
-            console.warn("Firebase config not found. Falling back to local state.");
+            console.log("Running in Local Mode (Firebase keys not set in index.html)");
         }
     </script>
 
@@ -192,7 +220,7 @@
             );
         };
 
-        const CalendarWidget = ({ entry, isAdmin }) => { // UPDATED: Accept isAdmin prop
+        const CalendarWidget = ({ entry, isAdmin }) => { 
             const [currentDate, setCurrentDate] = useState(new Date());
 
             useEffect(() => {
@@ -213,7 +241,6 @@
 
             const events = [
                 { type: 'CFS', date: entry.cfsClosing, color: 'bg-rose-100 text-rose-700 border-rose-200' },
-                // UPDATED: Conditionally include LOAD event only if isAdmin is true
                 ...(isAdmin ? [{ type: 'LOAD', date: entry.loadingDate, color: 'bg-amber-100 text-amber-700 border-amber-200' }] : []),
                 { type: 'ETD', date: entry.etdHkg, color: 'bg-blue-100 text-blue-700 border-blue-200' },
                 { type: 'ETA', date: entry.etaDest, color: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
@@ -263,11 +290,10 @@
             const [selectionDestCode, setSelectionDestCode] = useState(null);
             const [editingId, setEditingId] = useState(null);
             
-            // New State for Admin List Filtering
             const [adminSearchTerm, setAdminSearchTerm] = useState('');
-            const [adminSortBy, setAdminSortBy] = useState('etd'); // 'etd' | 'vessel' | 'pod'
+            const [adminSortBy, setAdminSortBy] = useState('etd'); 
             
-            const [user, setUser] = useState(null); // Track Firebase User
+            const [user, setUser] = useState(null); 
             
             const formTopRef = useRef(null);
 
@@ -276,55 +302,36 @@
             const [generatedText, setGeneratedText] = useState('');
             const [copied, setCopied] = useState(false);
 
-            // --- Firebase Auth & Data ---
             useEffect(() => {
-                if (!window.auth) return;
-
                 const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                             await window.signInWithCustomToken(window.auth, __initial_auth_token);
-                        } else {
-                             await window.signInAnonymously(window.auth);
-                        }
-                    } catch(e) { console.error("Auth error", e); }
+                    if (window.auth) {
+                        await window.signInAnonymously(window.auth);
+                        window.onAuthStateChanged(window.auth, setUser);
+                    } else {
+                        // Local mode
+                        const saved = localStorage.getItem('vesselEntries');
+                        if (saved) setEntries(JSON.parse(saved));
+                        setLoading(false);
+                    }
                 };
                 initAuth();
-
-                const unsub = window.onAuthStateChanged(window.auth, (u) => {
-                    setUser(u);
-                });
-                return () => unsub();
             }, []);
 
             useEffect(() => {
-                // If we have DB but no user yet, wait.
-                if (window.db && !user) return;
-
-                if (!window.db) {
-                    const saved = localStorage.getItem('vesselEntries');
-                    if (saved) setEntries(JSON.parse(saved));
-                    setLoading(false);
-                    return;
+                if (window.db && user) {
+                    const unsub = window.onSnapshot(
+                        window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'),
+                        (snapshot) => {
+                            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            setEntries(data);
+                            setLoading(false);
+                        },
+                        (error) => { console.error("Firestore error:", error); setLoading(false); }
+                    );
+                    return () => unsub();
                 }
-
-                const unsub = window.onSnapshot(
-                    window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'),
-                    (snapshot) => {
-                        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        setEntries(data);
-                        setLoading(false);
-                    },
-                    (error) => { 
-                        console.error("Firestore error:", error); 
-                        setLoading(false); 
-                    }
-                );
-
-                return () => unsub();
             }, [user]);
 
-            // --- Actions ---
             const handleAdminLogin = (e) => {
                 e.preventDefault();
                 if (adminPassword === '1234') {
@@ -355,10 +362,7 @@
                     transitTime: entry.transitTime || ''
                 });
                 setEditingId(entry.id);
-                // Scroll to form
-                if (formTopRef.current) {
-                    formTopRef.current.scrollIntoView({ behavior: 'smooth' });
-                }
+                if (formTopRef.current) formTopRef.current.scrollIntoView({ behavior: 'smooth' });
             };
 
             const cancelEditing = () => {
@@ -371,23 +375,12 @@
                 if (!formData.vessel) return;
 
                 if (window.db) {
-                    if (!user) { alert("Not authenticated."); return; }
-                    
                     if (editingId) {
-                        // Update existing
-                        await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules', editingId), {
-                            ...formData,
-                            updatedAt: new Date().toISOString()
-                        });
+                        await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules', editingId), { ...formData, updatedAt: new Date().toISOString() });
                     } else {
-                        // Create new
-                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'), { 
-                            ...formData, 
-                            createdAt: new Date().toISOString() 
-                        });
+                        await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'), { ...formData, createdAt: new Date().toISOString() });
                     }
                 } else {
-                    // Local Storage Fallback
                     let newEntries;
                     if (editingId) {
                         newEntries = entries.map(ent => ent.id === editingId ? { ...ent, ...formData } : ent);
@@ -398,15 +391,12 @@
                     setEntries(newEntries);
                     localStorage.setItem('vesselEntries', JSON.stringify(newEntries));
                 }
-                
-                // Reset form
                 setEditingId(null);
                 setFormData({ vessel: '', voyage: '', cfsClosing: '', etdHkg: '', etaDest: '', destCode: formData.destCode, loadingDate: '', carrier: '', transitTime: '' });
             };
 
             const removeEntry = async (id) => {
                 if (window.db) {
-                    if (!user) { alert("Not authenticated."); return; }
                     await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules', id));
                 } else {
                     const newEntries = entries.filter(e => e.id !== id);
@@ -423,18 +413,12 @@
                 }
             };
 
-            // --- Logic ---
             const getWeekNumber = (dStr) => { if (!dStr) return ''; const d = new Date(dStr); d.setHours(0,0,0,0); d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7); const w1 = new Date(d.getFullYear(), 0, 4); return 1 + Math.round(((d.getTime() - w1.getTime()) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7); };
             
-            // UPDATED: Now uses dash instead of space (02-DEC)
             const formatDate = (s) => { 
                 if (!s) return ''; 
                 const [y, m, d] = s.split('-'); 
-                // Using regex to replace all spaces with dashes just in case
-                return new Date(y, m-1, d)
-                    .toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-                    .toUpperCase()
-                    .replace(/ /g, '-'); 
+                return new Date(y, m-1, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase().replace(/ /g, '-'); 
             };
             
             const handleInputChange = (e) => {
@@ -471,20 +455,13 @@
                 if (navigator.clipboard) { navigator.clipboard.writeText(generatedText); setCopied(true); setTimeout(() => setCopied(false), 2000); }
             };
 
-            // Calculate cutoff date (3 weeks ago)
             const today = new Date();
             const pastDate = new Date(today);
-            pastDate.setDate(today.getDate() - 21); // 21 days = 3 weeks
+            pastDate.setDate(today.getDate() - 21);
             const cutoffDate = `${pastDate.getFullYear()}-${String(pastDate.getMonth()+1).padStart(2,'0')}-${String(pastDate.getDate()).padStart(2,'0')}`;
 
-            // Filter entries to show only recent ones
-            const visibleEntries = entries.filter(e => {
-                // If no CFS date, show it. If present, must be >= cutoff
-                if (!e.cfsClosing) return true;
-                return e.cfsClosing >= cutoffDate;
-            });
+            const visibleEntries = entries.filter(e => !e.cfsClosing || e.cfsClosing >= cutoffDate);
 
-            // Admin List: Filter & Sort Logic
             const adminFilteredEntries = visibleEntries.filter(entry => {
                 if (!adminSearchTerm) return true;
                 const term = adminSearchTerm.toLowerCase();
@@ -496,7 +473,6 @@
             }).sort((a, b) => {
                 if (adminSortBy === 'vessel') return (a.vessel || '').localeCompare(b.vessel || '');
                 if (adminSortBy === 'pod') return (a.destCode || '').localeCompare(b.destCode || '');
-                // Default ETD (Ascending)
                 return new Date(a.etdHkg || 0) - new Date(b.etdHkg || 0);
             });
 
@@ -506,12 +482,7 @@
             const selectedEntry = entries.find(e => e.id === selectedEntryId);
 
             useEffect(() => {
-                // Use visibleEntries for text generation if no specific selection is made, 
-                // OR use the specific selected set
-                let src = selectedForText.size > 0 
-                    ? entries.filter(e => selectedForText.has(e.id)) 
-                    : [...visibleEntries]; 
-                
+                let src = selectedForText.size > 0 ? entries.filter(e => selectedForText.has(e.id)) : [...visibleEntries]; 
                 src.sort((a, b) => new Date(a.etdHkg || 0) - new Date(b.etdHkg || 0));
                 
                 const txt = src.map((e, i) => {
