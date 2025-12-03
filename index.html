@@ -53,17 +53,16 @@
         // 2. Select "Config" and copy the object (apiKey, authDomain, etc)
         // 3. Paste it inside the variable below:
         
-const firebaseConfig = {
-  apiKey: "AIzaSyCChjLWOazjQzLp6JSvdFw3ocWb097Qqlc",
-  authDomain: "vsltrker.firebaseapp.com",
-  projectId: "vsltrker",
-  storageBucket: "vsltrker.firebasestorage.app",
-  messagingSenderId: "623033107164",
-  appId: "1:623033107164:web:fa7ccf7325346e58536a19",
-  measurementId: "G-LNYMSYRWP8"
-};
+        const firebaseConfig = {
+            // apiKey: "AIzaSy...",
+            // authDomain: "project-id.firebaseapp.com",
+            // projectId: "project-id",
+            // storageBucket: "project-id.appspot.com",
+            // messagingSenderId: "...",
+            // appId: "..."
+        };
 
-        const appId = 'vessel-schedule-app'; // You can leave this as is
+        const appId = 'vessel-schedule-app'; 
 
         // ==========================================
         //  END CONFIGURATION
@@ -305,8 +304,17 @@ const firebaseConfig = {
             useEffect(() => {
                 const initAuth = async () => {
                     if (window.auth) {
-                        await window.signInAnonymously(window.auth);
-                        window.onAuthStateChanged(window.auth, setUser);
+                        try {
+                            await window.signInAnonymously(window.auth);
+                            window.onAuthStateChanged(window.auth, (u) => {
+                                setUser(u);
+                                if (!u) setLoading(false);
+                            });
+                        } catch (error) {
+                            console.error("Auth failed (likely Authorized Domain issue):", error);
+                            alert("Authentication failed. If deploying to Vercel, please add your Vercel domain to Firebase Console > Authentication > Settings > Authorized Domains.");
+                            setLoading(false);
+                        }
                     } else {
                         // Local mode
                         const saved = localStorage.getItem('vesselEntries');
