@@ -58,6 +58,9 @@
         .items-table-container { flex-grow: 1; }
         .footer-table-container { margin-top: auto; border-top: 2px solid #e2e8f0; }
 
+        /* Spacer classes for alignment hack */
+        .spacer-section { visibility: hidden; pointer-events: none; }
+
         @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
 
         /* Input focus rings */
@@ -358,8 +361,13 @@
 
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
+            
+            // Add header with cargo details
             let meta = res_std.meta;
             let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
+
+            // PADDING LOGIC - Replaced by Flexbox Layout Strategy
+            // Instead of padding rows in data, we will ensure the table bodies take up available space.
 
             const buildColumnHTML = (rows, totals, title, show_diff) => {
                 // 1. Items Table Body
@@ -375,7 +383,8 @@
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        if(totals[c] > 0 || show_diff) { 
+                        // Show if >0 OR if we are in comparison mode (to maintain alignment with other side)
+                        if (val > 0 || show_diff) { 
                              footer_html += `
                                 <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
                                     <td></td><td></td>
@@ -395,7 +404,12 @@
 
                 // 3. Diff Table Body (Difference)
                 let diff_html = "";
+                // In Comparison mode, apply spacer logic to left column even if it has no diff, 
+                // so the TOTAL lines align, and the DIFF (or empty space) starts below.
+                // Actually, simpler: Add spacer to the right col's diff section, and add an INVISIBLE diff section to the left col.
+                
                 if (show_diff) {
+                    // This is the Right Column (with real diffs)
                     active_currencies.forEach(c => {
                         let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
                         let sign = diff >= 0 ? "+" : "";
@@ -409,9 +423,16 @@
                                 <td class="col-amt">${sign}${diff.toFixed(2)}</td>
                             </tr>`;
                     });
+                } else if (view_mode === 'Comparison') {
+                    // This is the Left Column (needs invisible diffs to match height if we want bottom alignment, 
+                    // BUT standard design usually just has diff on the right.
+                    // The "Total" lines are aligned by the flex-grow spacer above them.
+                    // The Diff section sits *below* the Total line.
+                    // So we just need an empty spacer for visual balance? No, usually left col just ends at Total.
+                    // The Spacer is ABOVE the diff in the right column to push it down.
                 }
 
-                // Use fixed col widths
+                // Use fixed col widths to ensure alignment across separate tables
                 const colGroup = `<colgroup><col style="width:20%"><col style="width:50%"><col style="width:15%"><col style="width:15%"></colgroup>`;
 
                 return `<div class="comparison-col">
@@ -461,7 +482,26 @@
                                     </tbody>
                                 </table>
                             </div>
-                            ` : ''}
+                            ` : 
+                            // If in comparison mode but no diff (Left column), add invisible spacer of same height 
+                            // to ensure the TOTAL line isn't the absolute bottom of the card, if we want symmetry? 
+                            // Actually, with flex-grow above the total, the total is pushed to the bottom of the "body wrapper".
+                            // The "Diff" is OUTSIDE the body wrapper.
+                            // So, if Right col has Diff and Left doesn't, the Left Total will be lower than Right Total 
+                            // because Right Total is pushed UP by the Diff section.
+                            // FIX: Add an invisible Diff section to the Left Column!
+                            view_mode === 'Comparison' ? `
+                            <div class="spacer-section" style="height: 40px;"></div>
+                            <div class="spacer-section" style="border-top: 1px solid transparent;">
+                                <table class="xl-table">
+                                    ${colGroup}
+                                    <tbody>
+                                        ${active_currencies.map(c => `<tr class="xl-row" style="visibility:hidden"><td></td><td></td><td>DIFF</td><td>0.00</td></tr>`).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            ` : ''
+                            }
                         </div>`;
             };
 
