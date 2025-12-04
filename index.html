@@ -51,7 +51,7 @@
 
         /* Layout Helpers */
         .calc-wrapper { display: flex; gap: 24px; width: 100%; align-items: flex-start; }
-        .calc-main { flex: 3; background: var(--calc-bg-card); padding: 30px; border-radius: var(--calc-radius); box-shadow: var(--calc-shadow); border: 1px solid var(--calc-border); min-width: 0; }
+        .calc-main { flex: 3; background: var(--calc-bg-card); padding: 30px; border-radius: var(--calc-radius); box-shadow: var(--calc-shadow); border: 1px solid var(--calc-border); min-width: 0; transition: all 0.3s; }
         .calc-sidebar { flex: 1; background: var(--calc-bg-card); padding: 24px; border-radius: var(--calc-radius); box-shadow: var(--calc-shadow); border: 1px solid var(--calc-border); max-height: calc(100vh - 100px); overflow-y: auto; min-width: 280px; display: flex; flex-direction: column; transition: all 0.3s; }
         .calc-sidebar.collapsed { flex: 0; min-width: 0; width: 0; padding: 0; margin: 0; border: 0; opacity: 0; overflow: hidden; }
 
@@ -688,7 +688,12 @@
                     <div className="calc-main">
                         <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
                             <div><h3 className="font-bold text-xl text-slate-800">Destination Charges Calculator</h3><span className="text-xs text-slate-500">Comparison & Generation Tool</span></div>
-                            <div className="flex gap-2"><button className="c-btn c-btn-sec" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}><Icons.Scroll size={16}/> History</button></div>
+                            <div className="flex gap-2">
+                                <button className={`c-btn ${sidebarCollapsed ? 'c-btn-pri' : 'c-btn-sec'}`} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+                                    {sidebarCollapsed ? <Icons.LayoutList size={16}/> : <Icons.Scroll size={16}/>}
+                                    <span className="ml-1">{sidebarCollapsed ? 'Show History' : 'Hide History'}</span>
+                                </button>
+                            </div>
                         </div>
                         <div className="calc-inputs">
                             <div className="calc-input-grp" style={{flex:2}}><label>Job Reference #</label><input className="calc-input-field" placeholder="e.g. HMB-2023-001" value={globals.ref} onChange={e => setGlobals({...globals, ref: e.target.value})} /></div>
