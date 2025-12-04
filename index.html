@@ -409,7 +409,7 @@
                 // 2. Diffs (only for the requested/right side in comparison mode)
                 if(show_diff) {
                     // Spacer row
-                    footer_html += `<tr style="height: 20px; background-color: transparent; border: none;"><td colspan="4"></td></tr>`;
+                    footer_html += `<tr style="height: 40px; background-color: transparent; border: none;"><td colspan="4"></td></tr>`;
 
                     active_currencies.forEach(c => {
                         let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
