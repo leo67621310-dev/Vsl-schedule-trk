@@ -361,10 +361,25 @@
             let meta = res_std.meta;
             let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
 
+            // PADDING LOGIC
+            let rows_std = [...res_std.rows];
+            let rows_req = [...res_req.rows];
+
+            if (view_mode === 'Comparison') {
+                let max_len = Math.max(rows_std.length, rows_req.length);
+                // Add dummy objects for padding
+                while (rows_std.length < max_len) rows_std.push({ is_pad: true });
+                while (rows_req.length < max_len) rows_req.push({ is_pad: true });
+            }
+
             const buildTable = (rows, totals, title, show_diff) => {
-                let rows_html = rows.map(r => 
-                    `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`
-                ).join('');
+                let rows_html = rows.map(r => {
+                    if (r.is_pad) {
+                        // Render empty row to maintain height
+                        return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
+                    }
+                    return `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`;
+                }).join('');
 
                 // Build Totals Rows
                 let footer_html = "";
@@ -373,7 +388,7 @@
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        if(totals[c] > 0 || show_diff) { // Show if >0 or if we need structure for diff alignment? Usually just >0
+                        if(totals[c] > 0 || show_diff) { 
                              footer_html += `
                                 <tr class="xl-row" style="background-color: #f8fafc; border-top: 2px solid #e2e8f0; font-weight: 700;">
                                     <td colspan="2"></td>
@@ -393,9 +408,8 @@
 
                 // 2. Diffs (only for the requested/right side in comparison mode)
                 if(show_diff) {
-                    // Spacer row if needed, or just margin. Table rows don't take margin well. 
-                    // User asked to "move the diff section down". A spacer row works.
-                    footer_html += `<tr style="height: 20px;"><td colspan="4"></td></tr>`;
+                    // Spacer row
+                    footer_html += `<tr style="height: 20px; background-color: transparent; border: none;"><td colspan="4"></td></tr>`;
 
                     active_currencies.forEach(c => {
                         let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
@@ -431,8 +445,8 @@
                         </div>`;
             };
 
-            let left = (view_mode !== 'Requested') ? buildTable(res_std.rows, res_std.totals, title_std, false) : "";
-            let right = (view_mode !== 'Standard') ? buildTable(res_req.rows, res_req.totals, title_req, view_mode === 'Comparison') : "";
+            let left = (view_mode !== 'Requested') ? buildTable(rows_std, res_std.totals, title_std, false) : "";
+            let right = (view_mode !== 'Standard') ? buildTable(rows_req, res_req.totals, title_req, view_mode === 'Comparison') : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
@@ -470,6 +484,8 @@
                     // Initial load default
                     setStdData(JSON.parse(JSON.stringify(DEFAULT_PRESETS["SEA MASTER STANDARD"])));
                 }
+                // Initial calculation on mount
+                setTimeout(runReportCalculation, 100);
             }, []);
 
             // Only save to local storage on changes, do NOT auto-calculate report
@@ -484,7 +500,7 @@
             };
 
             // Helper to pick which data object to modify based on active tab
-            const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? reqData : mgrData);
+            const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? req_data : mgrData);
             const setTargetData = (target, newData) => {
                 if (target === 'std') setStdData(newData);
                 else if (target === 'req') setReqData(newData);
