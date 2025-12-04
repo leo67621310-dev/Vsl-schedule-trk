@@ -40,7 +40,7 @@
         .xl-wrapper { margin-top: 10px; }
         .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; }
         .xl-info-box strong { color: #0f172a; }
-        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; } /* Fixed layout for alignment */
+        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
         .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 8px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .xl-row td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; overflow-wrap: break-word; }
         .xl-row:nth-child(even) { background-color: #fcfcfc; }
@@ -48,11 +48,14 @@
         .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
         .calc-subtext { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
         
-        .comparison-container { display: flex; gap: 24px; }
-        .comparison-col { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+        /* NEW FLEX LAYOUT CLASSES */
+        .tables-wrapper { display: flex; gap: 24px; align-items: stretch; }
+        .table-container { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); min-height: 400px; }
         .table-title { padding: 12px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
-        
-        @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
+        .table-content { flex-grow: 1; } /* This pushes the footer down */
+        .total-section { margin-top: auto; border-top: 2px solid #e2e8f0; } /* Sticky bottom effect */
+
+        @media (max-width: 768px) { .tables-wrapper { flex-direction: column; } }
 
         /* Input focus rings */
         input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
@@ -352,32 +355,22 @@
 
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
+            
+            // Add header with cargo details
             let meta = res_std.meta;
             let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
 
-            // PADDING LOGIC (Visual padding only, does not affect calculation)
-            let rows_std = [...res_std.rows];
-            let rows_req = [...res_req.rows];
-
-            // In Comparison mode, we need to ensure both sides have the SAME number of visual rows (Items + Pad)
-            // so that the Footer Table starts at the exact same Y-position.
-            if (view_mode === 'Comparison') {
-                let max_len = Math.max(rows_std.length, rows_req.length);
-                while (rows_std.length < max_len) rows_std.push({ is_pad: true });
-                while (rows_req.length < max_len) rows_req.push({ is_pad: true });
-            }
-
             const buildColumnHTML = (rows, totals, title, show_diff) => {
                 // 1. Items Table Body
-                let rows_html = rows.map(r => {
-                    if (r.is_pad) return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
-                    return `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`;
-                }).join('');
-
-                if (!rows_html) rows_html = `<tr class="xl-row"><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">No charges</td></tr>`;
+                let rows_html = rows.map(r => 
+                    `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`
+                ).join('');
+                
+                if(!rows_html) rows_html = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">No charges</td></tr>`;
 
                 // 2. Footer Table Body (Totals)
                 let footer_html = "";
+                
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
@@ -385,7 +378,7 @@
                         if (val > 0 || show_diff) { 
                              footer_html += `
                                 <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                                    <td colspan="2"></td>
+                                    <td></td><td></td>
                                     <td class="col-curr" style="color: #64748b;">TOTAL ${c}</td>
                                     <td class="col-amt" style="color: #0f172a;">${val.toFixed(2)}</td>
                                 </tr>`;
@@ -394,13 +387,13 @@
                 } else {
                      footer_html += `
                         <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                            <td colspan="2"></td>
+                            <td></td><td></td>
                             <td class="col-curr" style="color: #64748b;">TOTAL</td>
                             <td class="col-amt" style="color: #0f172a;">0.00</td>
                         </tr>`;
                 }
 
-                // 3. Diff Table Body (Difference) - SEPARATE TABLE or SPACER ROW
+                // 3. Diff Table Body (Difference)
                 let diff_html = "";
                 if (show_diff) {
                     active_currencies.forEach(c => {
@@ -411,7 +404,7 @@
                         
                         diff_html += `
                             <tr class="xl-row" style="background-color: ${bg}; border-top: 1px dashed ${color}; font-weight: 700; color: ${color};">
-                                <td colspan="2"></td>
+                                <td></td><td></td>
                                 <td class="col-curr">DIFF ${c}</td>
                                 <td class="col-amt">${sign}${diff.toFixed(2)}</td>
                             </tr>`;
@@ -421,11 +414,11 @@
                 // Use fixed col widths to ensure alignment across separate tables
                 const colGroup = `<colgroup><col style="width:20%"><col style="width:50%"><col style="width:15%"><col style="width:15%"></colgroup>`;
 
-                return `<div class="comparison-col">
+                return `<div class="table-container">
                             <div class="table-title">${title}</div>
                             
                             <!-- Items Table (Flex Grow to push footer down) -->
-                            <div style="flex: 1;">
+                            <div class="table-content">
                                 <table class="xl-table">
                                     ${colGroup}
                                     <thead>
@@ -443,7 +436,7 @@
                             </div>
                             
                             <!-- Footer Table (Pinned to bottom) -->
-                            <div style="border-top: 2px solid #e2e8f0;">
+                            <div class="total-section">
                                 <table class="xl-table">
                                     ${colGroup}
                                     <tbody>
@@ -454,7 +447,7 @@
                             
                             ${diff_html ? `
                             <!-- Spacer -->
-                            <div style="height: 40px;"></div> 
+                            <div style="height: 20px;"></div>
                             
                             <!-- Diff Table -->
                             <div style="border-top: 1px dashed #fdba74;">
@@ -469,12 +462,12 @@
                         </div>`;
             };
 
-            let left = (view_mode !== 'Requested') ? buildColumnHTML(rows_std, res_std.totals, title_std, false) : "";
-            let right = (view_mode !== 'Standard') ? buildColumnHTML(rows_req, res_req.totals, title_req, view_mode === 'Comparison') : "";
+            let left = (view_mode !== 'Requested') ? buildColumnHTML(res_std.rows, res_std.totals, title_std, false) : "";
+            let right = (view_mode !== 'Standard') ? buildColumnHTML(res_req.rows, res_req.totals, title_req, view_mode === 'Comparison') : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
-                container_html = `<div class="comparison-container">${left}${right}</div>`;
+                container_html = `<div class="tables-wrapper">${left}${right}</div>`;
             } else {
                 container_html = `<div style="width:100%;">${left || right}</div>`;
             }
