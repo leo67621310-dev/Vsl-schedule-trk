@@ -441,20 +441,29 @@
                 let footer_html = `<div class="footer-section totals">`;
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
-                        if (totals[c] > 0 || show_diff) footer_html += `<div class="stat-line"><span class="stat-lbl">TOTAL ${c}</span> <span class="stat-val">${(totals[c]||0).toFixed(2)}</span></div>`;
+                        if (totals[c] > 0 || show_diff || view_mode === 'Comparison') footer_html += `<div class="stat-line"><span class="stat-lbl">TOTAL ${c}</span> <span class="stat-val">${(totals[c]||0).toFixed(2)}</span></div>`;
                     });
                 } else footer_html += `<div class="stat-line"><span class="stat-lbl">TOTAL</span> <span class="stat-val">0.00</span></div>`;
                 footer_html += `</div>`;
 
-                let diff_html = `<div class="footer-section diffs" style="${show_diff ? '' : 'visibility: hidden;'}">`;
-                if (show_diff) {
+                let diff_content = "";
+                if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
                         let sign = diff >= 0 ? "+" : "";
-                        diff_html += `<div class="stat-line"><span class="stat-lbl">DIFF ${c}</span> <span class="stat-val">${sign}${diff.toFixed(2)}</span></div>`;
+                        diff_content += `<div class="stat-line"><span class="stat-lbl">DIFF ${c}</span> <span class="stat-val">${sign}${diff.toFixed(2)}</span></div>`;
                     });
+                } else {
+                     diff_content += `<div class="stat-line"><span class="stat-lbl">DIFF</span> <span class="stat-val">0.00</span></div>`;
                 }
-                diff_html += `</div>`;
+
+                let diff_html = "";
+                if (view_mode === 'Comparison') {
+                    // In comparison, always render to reserve space, hide if not showing diff
+                    diff_html = `<div class="footer-section diffs" style="${show_diff ? '' : 'visibility: hidden;'}">${diff_content}</div>`;
+                } else if (show_diff) {
+                    diff_html = `<div class="footer-section diffs">${diff_content}</div>`;
+                }
 
                 return `<div class="report-card">
                             <div class="table-title">${title}</div>
