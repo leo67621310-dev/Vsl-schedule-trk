@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vessel Schedule Manager</title>
+    <title>Vessel Manager & Calculator</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,10 +16,11 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        /* --- GLOBAL & MAIN APP STYLES --- */
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 0; }
         textarea, pre, code { font-family: 'JetBrains Mono', monospace; }
         
         /* Custom scrollbar */
@@ -28,43 +29,109 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        .fade-enter { opacity: 0; transform: translateY(10px); }
-        .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out; }
         
-        /* Calculator Specific Styles */
-        .calc-input { font-variant-numeric: slashed-zero tabular-nums; }
-        .calc-section { transition: all 0.2s; }
-        .calc-section:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        /* --- CALCULATOR SPECIFIC STYLES (Ported & Scoped) --- */
+        :root {
+            --calc-primary: #2563eb; --calc-primary-dark: #1e40af; 
+            --calc-secondary: #64748b; --calc-border: #e2e8f0;
+            --calc-success: #10b981; --calc-danger: #ef4444; --calc-warning: #f59e0b;
+            --calc-bg-card: #ffffff;
+            --calc-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --calc-radius: 12px;
+        }
+
+        /* Enforce fonts for calculator inputs */
+        .calc-wrapper input, .calc-wrapper select, .calc-wrapper button { 
+            font-family: 'Inter', sans-serif; 
+            font-variant-numeric: slashed-zero tabular-nums; 
+        }
+
+        /* Layout Helpers */
+        .calc-wrapper { display: flex; gap: 24px; width: 100%; align-items: flex-start; }
+        .calc-main { flex: 3; background: var(--calc-bg-card); padding: 30px; border-radius: var(--calc-radius); box-shadow: var(--calc-shadow); border: 1px solid var(--calc-border); min-width: 0; }
+        .calc-sidebar { flex: 1; background: var(--calc-bg-card); padding: 24px; border-radius: var(--calc-radius); box-shadow: var(--calc-shadow); border: 1px solid var(--calc-border); max-height: calc(100vh - 100px); overflow-y: auto; min-width: 280px; display: flex; flex-direction: column; transition: all 0.3s; }
+        .calc-sidebar.collapsed { flex: 0; min-width: 0; width: 0; padding: 0; margin: 0; border: 0; opacity: 0; overflow: hidden; }
+
+        /* Global Inputs Area */
+        .calc-inputs { background: #f1f5f9; padding: 20px; border-radius: var(--calc-radius); margin-bottom: 24px; display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+        .calc-input-grp { display: flex; flex-direction: column; flex: 1; }
+        .calc-input-grp.narrow { flex: 0 0 120px; }
+        .calc-input-grp label { font-size: 11px; font-weight: 700; color: var(--calc-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .calc-input-field { padding: 10px 12px; border: 1px solid var(--calc-border); border-radius: 6px; font-size: 13px; width: 100%; background: white; transition: border 0.2s; outline: none; }
+        .calc-input-field:focus { border-color: var(--calc-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        /* Tabs */
+        .calc-tabs { display: flex; gap: 8px; margin-bottom: 24px; padding: 4px; background: #f1f5f9; border-radius: 8px; width: fit-content; }
+        .calc-tab-btn { padding: 8px 24px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--calc-secondary); border: 1px solid transparent; transition: 0.2s; }
+        .calc-tab-btn:hover { color: #0f172a; background: rgba(255,255,255,0.5); }
+        .calc-tab-btn.active { background: white; color: var(--calc-primary); border-color: var(--calc-border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+        /* Dynamic Sections */
+        .complex-section { 
+            background: white; border: 1px solid var(--calc-border); padding: 16px; border-radius: 8px; margin-bottom: 12px; 
+            display: grid; grid-template-columns: 120px 80px 1fr 1fr 1fr auto; gap: 12px; align-items: end; transition: box-shadow 0.2s;
+        }
+        .complex-section:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .complex-section.pier-layout { grid-template-columns: 120px 80px 1fr 1fr 1fr 1fr auto; }
+        .section-label { font-weight: 700; font-size: 13px; align-self: center; color: var(--calc-secondary); }
         
-        /* Report Styles for InnerHTML */
-        .xl-wrapper { margin-top: 10px; }
-        .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; }
+        /* Items Table */
+        .items-header { display: grid; grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 8px; padding: 0 8px; }
+        .item-row { display: grid; grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; padding: 6px 8px; background: #fff; border: 1px solid var(--calc-border); border-radius: 6px; }
+        .item-row:hover { border-color: var(--calc-primary); }
+
+        /* Buttons */
+        .c-btn { cursor: pointer; padding: 10px 16px; border: none; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s; }
+        .c-btn:hover { filter: brightness(105%); transform: translateY(-1px); }
+        .c-btn-pri { background-color: var(--calc-primary); color: white; }
+        .c-btn-suc { background-color: var(--calc-success); color: white; }
+        .c-btn-warn { background-color: var(--calc-warning); color: white; }
+        .c-btn-dang { background-color: var(--calc-danger); color: white; }
+        .c-btn-info { background-color: #0ea5e9; color: white; }
+        .c-btn-sec { background-color: white; border: 1px solid var(--calc-border); color: #0f172a; }
+        .c-btn-sec:hover { background-color: #f8fafc; }
+        .c-btn-sm { padding: 4px 8px; font-size: 11px; }
+        .c-btn-icon { width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+        /* Report Styles */
+        .xl-wrapper { margin-top: 30px; }
+        .xl-info-box { background: #f8fafc; border: 1px solid var(--calc-border); padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: var(--calc-secondary); display: flex; gap: 20px; }
         .xl-info-box strong { color: #0f172a; }
-        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; height: 100%; }
-        .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 8px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        .xl-row td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; overflow-wrap: break-word; }
-        .xl-row:nth-child(even) { background-color: #fcfcfc; }
-        .col-amt { text-align: right; font-weight: 600; font-family: 'Inter', sans-serif; font-variant-numeric: slashed-zero tabular-nums; color: #0f172a; }
-        .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
-        .calc-subtext { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
+        .report-card { background: white; border: 1px solid var(--calc-border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
+        .table-title { font-weight: 700; margin-bottom: 10px; padding-left: 4px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; color: #0f172a; }
+        .table-wrapper { flex: 1; display: flex; flex-direction: column; }
+        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+        .xl-header { background: #f1f5f9; color: var(--calc-secondary); font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--calc-border); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        .xl-row td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; word-wrap: break-word; }
+        .xl-row:nth-child(even) { background-color: #fafafa; }
+        .col-amt { text-align: right; padding-right: 24px; font-family: 'Inter', sans-serif; font-weight: 600; font-variant-numeric: slashed-zero tabular-nums; color: #0f172a; }
+        .min-highlight { font-weight: 800; color: #0f172a; font-size: 11px; }
+        .calc-subtext { display: block; font-size: 11px; color: #64748b; margin-top: 3px; font-weight: 500; }
+        .footer-container { margin-top: auto; border-top: 1px solid var(--calc-border); }
+        .footer-section { padding: 12px 16px; }
+        .footer-section.totals { background: #f8fafc; }
+        .footer-section.diffs { background: #fff; border-top: 1px dashed var(--calc-border); color: #b45309; }
+        .stat-line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; padding-bottom: 2px; }
+        .stat-val { font-weight: 700; font-variant-numeric: slashed-zero tabular-nums; }
+        .comparison-container { display: flex; gap: 20px; }
+        .comparison-col { flex: 1; display: flex; flex-direction: column; }
         
-        /* FLEXBOX REPORT LAYOUT */
-        .comparison-container { display: flex; gap: 24px; align-items: stretch; }
-        .comparison-col { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-        .table-title { padding: 12px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
+        /* History Sidebar Cards */
+        .history-card { background: white; border: 1px solid var(--calc-border); border-left: 3px solid var(--calc-primary); padding: 12px; margin-bottom: 10px; border-radius: 6px; cursor: pointer; position: relative; transition: 0.2s; }
+        .history-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .history-ref { font-weight: 600; color: var(--calc-primary); font-size: 14px; display: block; margin-bottom: 4px; }
+        .history-meta { font-size: 11px; color: var(--calc-secondary); margin-bottom: 8px; }
         
-        /* Force footer to bottom */
-        .table-body-wrapper { flex-grow: 1; display: flex; flex-direction: column; }
-        .items-table-container { flex-grow: 1; }
-        .footer-table-container { margin-top: auto; border-top: 2px solid #e2e8f0; }
-
-        /* Spacer classes for alignment hack */
-        .spacer-section { visibility: hidden; pointer-events: none; }
-
-        @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
-
-        /* Input focus rings */
-        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        @media (max-width: 900px) { 
+            .calc-wrapper, .comparison-container { flex-direction: column; } 
+            .calc-main, .calc-sidebar { width: 100%; }
+            .complex-section, .item-row { grid-template-columns: 1fr 1fr; }
+            .complex-section .section-label { grid-column: 1 / -1; width: 100%; justify-content: flex-start; }
+            .calc-inputs { gap: 15px; }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased">
@@ -160,21 +227,6 @@
             </div>
         );
 
-        const Modal = ({ isOpen, onClose, title, children }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in duration-200 transform scale-100">
-                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
-                            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors"><Icons.X size={20}/></button>
-                        </div>
-                        {children}
-                    </div>
-                </div>
-            );
-        };
-
         const SmartDateInput = ({ label, name, value, onChange, placeholder = "DD/MM/YY", required = false, className = "" }) => {
             const [displayValue, setDisplayValue] = useState('');
             const [error, setError] = useState(false);
@@ -256,8 +308,8 @@
         // --- CALCULATOR LOGIC (Pure JS) ---
         const CURRENCIES = ['EUR', 'USD', 'HKD', 'RMB'];
         const DEFAULT_PRESETS = {
-            "SEA MASTER STANDARD": { "sections": [{ "type": "lcl", "data": { "rt": 15, "ton": 30, "min": 30, "curr": "EUR" } }, { "type": "pier", "data": { "high": 13.4, "heavy": 66.69, "light": 83.74, "min": 74.4, "curr": "EUR" } }], "items": [{ "name": "GSC", "price": 5.5, "unit": "RT", "curr": "EUR", "min_type": "None" }, { "name": "ERS", "price": 24, "unit": "RT", "curr": "EUR", "min_type": "None" }, { "name": "ATB FEE", "price": 10.5, "unit": "BL", "curr": "EUR", "min_type": "None" }, { "name": "EECS", "price": 3.5, "unit": "BL", "curr": "EUR", "min_type": "None" }, { "name": "DO", "price": 65, "unit": "BL", "curr": "EUR", "min_type": "None" }, { "name": "ANTI TERROR", "price": 5.5, "unit": "BL", "curr": "EUR", "min_type": "None" }, { "name": "SECURE RELEASE", "price": 7, "unit": "BL", "curr": "EUR", "min_type": "None" }], "title": "SEA MASTER STANDARD" },
-            "EMPTY": { "sections": [], "items": [], "title": "Empty Template" }
+            "SEA MASTER STANDARD - NON DG": { "sections": [{ "type": "lcl", "data": { "rt": 15, "ton": 30, "min": 30, "curr": "EUR" } }, { "type": "pier", "data": { "high": 13.4, "heavy": 66.69, "light": 83.74, "min": 74.4, "curr": "EUR" } }, { "type": "stor", "data": { "rate": 0, "min_days": 0, "days": 0, "curr": "EUR", "unit": "RT" } }], "items": [{ "name": "GSC", "price": 5.5, "unit": "RT", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "ERS", "price": 24, "unit": "RT", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "ATB FEE", "price": 10.5, "unit": "BL", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "EECS", "price": 3.5, "unit": "BL", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "DO", "price": 65, "unit": "BL", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "ANTI TERROR", "price": 5.5, "unit": "BL", "curr": "EUR", "min_type": "None", "min_val": 0 }, { "name": "SECURE RELEASE", "price": 7, "unit": "BL", "curr": "EUR", "min_type": "None", "min_val": 0 }], "title": "SEA MASTER STANDARD - NON DG" },
+            "EMPTY": { "sections": [{ "type": "lcl", "data": { "rt": 0, "ton": 0, "min": 0, "curr": "EUR" } }, { "type": "pier", "data": { "high": 0, "heavy": 0, "light": 0, "min": 0, "curr": "EUR" } }, { "type": "stor", "data": { "rate": 0, "min_days": 0, "days": 0, "curr": "EUR", "unit": "RT" } }], "items": [], "title": "Empty Template" }
         };
 
         function calculateCharges(cbm, kgs, pkgs, sections, extra_items) {
@@ -283,10 +335,10 @@
 
                     if (base_calc < lcl_min) {
                         lcl_total = lcl_min;
-                        desc_line2 = `<span class="min-highlight">[MIN ${lcl_min.toFixed(2)}]</span>`;
+                        desc_line2 = `<span class="min-highlight">[APPLIED: MINIMUM (${lcl_min.toFixed(2)})]</span>`;
                     } else {
                         lcl_total = base_calc;
-                        desc_line2 = calc_cbm >= calc_ton ? `<span class="min-highlight">[CBM RATE]</span>` : `<span class="min-highlight">[TON RATE]</span>`;
+                        desc_line2 = calc_cbm >= calc_ton ? `<span class="min-highlight">[APPLIED: CBM RATE]</span>` : `<span class="min-highlight">[APPLIED: TON RATE]</span>`;
                     }
                     rows.push({'item': 'LCL CHARGES', 'desc': `${s_curr} ${d.rt}/CBM OR ${d.ton}/TON | MIN ${lcl_min.toFixed(2)} ${desc_line2}`, 'curr': s_curr, 'amount': lcl_total});
                 }
@@ -301,12 +353,12 @@
 
                     if (calculated_amt < d.min) {
                         pier_total = d.min;
-                        desc_line2 = `<span class="min-highlight">[MIN ${d.min.toFixed(2)}]</span>`;
+                        desc_line2 = `<span class="min-highlight">[APPLIED: MINIMUM (${d.min.toFixed(2)})]</span>`;
                     } else {
                         pier_total = calculated_amt;
-                        desc_line2 = amt_high > amt_weight ? `<span class="min-highlight">[HIGH VOL]</span>` : (avg_pkg_weight > 20 ? `<span class="min-highlight">[HEAVY]</span>` : `<span class="min-highlight">[LIGHT]</span>`);
+                        desc_line2 = amt_high > amt_weight ? `<span class="min-highlight">[APPLIED: HIGH VOL RATE]</span>` : (avg_pkg_weight > 20 ? `<span class="min-highlight">[APPLIED: HEAVY RATE]</span>` : `<span class="min-highlight">[APPLIED: LIGHT RATE]</span>`);
                     }
-                    rows.push({'item': 'PIER CHARGES', 'desc': `${s_curr} >20k:${d.heavy}/T | <20k:${d.light}/T | HiVol:${d.high}/RT | MIN:${d.min.toFixed(2)} ${desc_line2}`, 'curr': s_curr, 'amount': pier_total});
+                    rows.push({'item': 'PIER CHARGES', 'desc': `${s_curr} ${d.heavy}/TON (>20kg) | ${d.light}/TON (<20kg) | ${d.high}/RT (Ratio ≥5) | MIN ${d.min.toFixed(2)} ${desc_line2}`, 'curr': s_curr, 'amount': pier_total});
                 }
                 else if (section.type === 'stor') {
                     let s_rate = d.rate;
@@ -317,7 +369,7 @@
                         let billable_days = Math.max(actual_days, s_min_days);
                         let qty_used = s_unit === 'RT' ? rt : s_unit === 'CBM' ? cbm : s_unit === 'TON' ? tons : s_unit === 'PKG' ? pkgs : s_unit === 'FLAT' ? 1.0 : rt;
                         let stor_amt = s_rate * qty_used * billable_days;
-                        let min_text = actual_days < s_min_days ? `<span class="min-highlight">[MIN ${s_min_days} DAYS]</span>` : ``;
+                        let min_text = actual_days < s_min_days ? `<span class="min-highlight">[APPLIED: MINIMUM (${s_min_days} DAYS)]</span>` : `<span class="min-highlight">[APPLIED: ${actual_days} DAYS]</span>`;
                         rows.push({'item': 'STORAGE', 'desc': `${s_curr} ${s_rate}/${s_unit}/DAY ${min_text}`, 'curr': s_curr, 'amount': stor_amt});
                     }
                 }
@@ -341,11 +393,18 @@
                 if (min_type === 'Unit' && ['RT', 'W/M', 'CBM', 'TON'].includes(unit)) billable_qty = Math.max(billable_qty, min_val);
 
                 let line_total = price * billable_qty;
-                if (min_type === 'Amt' && min_val > line_total) line_total = min_val;
+                let amt_min_applied = false;
+                if (min_type === 'Amt' && min_val > line_total) { line_total = min_val; amt_min_applied = true; }
 
                 let desc = `${curr} ${price}/${unit}`;
                 if (min_type === 'Amt') desc += ` | MIN ${curr} ${min_val.toFixed(2)}`;
                 else if (min_type === 'Unit' && min_val > 1) desc += ` | MIN ${min_val} ${unit}`;
+
+                let min_text = "";
+                if (amt_min_applied) min_text = `[APPLIED: MINIMUM (${min_val.toFixed(2)})]`;
+                else if (min_type === 'Unit' && billable_qty === min_val && billable_qty > qty_used) min_text = `[APPLIED: MINIMUM (${min_val} ${unit})]`;
+
+                if(min_text) desc += ` <span class="calc-subtext"><span class="min-highlight">${min_text}</span></span>`;
 
                 if (line_total > 0) rows.push({'item': item.name.toUpperCase(), 'desc': desc, 'curr': curr, 'amount': line_total});
             });
@@ -361,156 +420,60 @@
 
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
-            
-            // Add header with cargo details
             let meta = res_std.meta;
             let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
 
-            // PADDING LOGIC - Replaced by Flexbox Layout Strategy
-            // Instead of padding rows in data, we will ensure the table bodies take up available space.
+            let rows_std = [...res_std.rows];
+            let rows_req = [...res_req.rows];
+
+            if (view_mode === 'Comparison') {
+                let max_len = Math.max(rows_std.length, rows_req.length);
+                while (rows_std.length < max_len) rows_std.push({ is_pad: true });
+                while (rows_req.length < max_len) rows_req.push({ is_pad: true });
+            }
 
             const buildColumnHTML = (rows, totals, title, show_diff) => {
-                // 1. Items Table Body
-                let rows_html = rows.map(r => 
-                    `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`
-                ).join('');
-                
-                if(!rows_html) rows_html = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">No charges</td></tr>`;
+                let rows_html = rows.map(r => {
+                    if (r.is_pad) return `<tr class="xl-row"><td>&nbsp;</td><td></td><td></td><td></td></tr>`;
+                    return `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`;
+                }).join('');
 
-                // 2. Footer Table Body (Totals)
-                let footer_html = "";
-                
+                let footer_html = `<div class="footer-section totals">`;
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
-                        let val = totals[c] || 0;
-                        // Show if >0 OR if we are in comparison mode (to maintain alignment with other side)
-                        if (val > 0 || show_diff) { 
-                             footer_html += `
-                                <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                                    <td></td><td></td>
-                                    <td class="col-curr" style="color: #64748b;">TOTAL ${c}</td>
-                                    <td class="col-amt" style="color: #0f172a;">${val.toFixed(2)}</td>
-                                </tr>`;
-                        }
+                        if (totals[c] > 0 || show_diff) footer_html += `<div class="stat-line"><span class="stat-lbl">TOTAL ${c}</span> <span class="stat-val">${(totals[c]||0).toFixed(2)}</span></div>`;
                     });
-                } else {
-                     footer_html += `
-                        <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                            <td></td><td></td>
-                            <td class="col-curr" style="color: #64748b;">TOTAL</td>
-                            <td class="col-amt" style="color: #0f172a;">0.00</td>
-                        </tr>`;
-                }
+                } else footer_html += `<div class="stat-line"><span class="stat-lbl">TOTAL</span> <span class="stat-val">0.00</span></div>`;
+                footer_html += `</div>`;
 
-                // 3. Diff Table Body (Difference)
-                let diff_html = "";
-                // In Comparison mode, apply spacer logic to left column even if it has no diff, 
-                // so the TOTAL lines align, and the DIFF (or empty space) starts below.
-                // Actually, simpler: Add spacer to the right col's diff section, and add an INVISIBLE diff section to the left col.
-                
+                let diff_html = `<div class="footer-section diffs" style="${show_diff ? '' : 'visibility: hidden;'}">`;
                 if (show_diff) {
-                    // This is the Right Column (with real diffs)
                     active_currencies.forEach(c => {
                         let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
                         let sign = diff >= 0 ? "+" : "";
-                        let color = diff >= 0 ? "#b45309" : "#059669"; 
-                        let bg = diff >= 0 ? "#fff7ed" : "#ecfdf5";
-                        
-                        diff_html += `
-                            <tr class="xl-row" style="background-color: ${bg}; border-top: 1px dashed ${color}; font-weight: 700; color: ${color};">
-                                <td></td><td></td>
-                                <td class="col-curr">DIFF ${c}</td>
-                                <td class="col-amt">${sign}${diff.toFixed(2)}</td>
-                            </tr>`;
+                        diff_html += `<div class="stat-line"><span class="stat-lbl">DIFF ${c}</span> <span class="stat-val">${sign}${diff.toFixed(2)}</span></div>`;
                     });
-                } else if (view_mode === 'Comparison') {
-                    // This is the Left Column (needs invisible diffs to match height if we want bottom alignment, 
-                    // BUT standard design usually just has diff on the right.
-                    // The "Total" lines are aligned by the flex-grow spacer above them.
-                    // The Diff section sits *below* the Total line.
-                    // So we just need an empty spacer for visual balance? No, usually left col just ends at Total.
-                    // The Spacer is ABOVE the diff in the right column to push it down.
                 }
+                diff_html += `</div>`;
 
-                // Use fixed col widths to ensure alignment across separate tables
-                const colGroup = `<colgroup><col style="width:20%"><col style="width:50%"><col style="width:15%"><col style="width:15%"></colgroup>`;
-
-                return `<div class="comparison-col">
+                return `<div class="report-card">
                             <div class="table-title">${title}</div>
-                            
-                            <!-- Main wrapper for flex grow behavior -->
-                            <div class="table-body-wrapper">
-                                <!-- Items Table (Flex Grow to push footer down) -->
-                                <div class="items-table-container">
-                                    <table class="xl-table">
-                                        ${colGroup}
-                                        <thead>
-                                            <tr>
-                                                <th class="xl-header">Item</th>
-                                                <th class="xl-header">Desc</th>
-                                                <th class="xl-header">Cur</th>
-                                                <th class="xl-header col-amt">Amt</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${rows_html}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                
-                                <!-- Footer Table (Pinned to bottom) -->
-                                <div class="footer-table-container">
-                                    <table class="xl-table">
-                                        ${colGroup}
-                                        <tbody>
-                                            ${footer_html}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            
-                            ${diff_html ? `
-                            <!-- Spacer -->
-                            <div style="height: 40px;"></div> 
-                            
-                            <!-- Diff Table -->
-                            <div style="border-top: 1px dashed #fdba74;">
+                            <div class="table-wrapper">
                                 <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${diff_html}
-                                    </tbody>
+                                    <thead><tr><th class="xl-header col-item">Item</th><th class="xl-header col-desc">Description</th><th class="xl-header col-curr">Cur</th><th class="xl-header col-amt">Amount</th></tr></thead>
+                                    <tbody>${rows_html}</tbody>
                                 </table>
                             </div>
-                            ` : 
-                            // If in comparison mode but no diff (Left column), add invisible spacer of same height 
-                            // to ensure the TOTAL line isn't the absolute bottom of the card, if we want symmetry? 
-                            // Actually, with flex-grow above the total, the total is pushed to the bottom of the "body wrapper".
-                            // The "Diff" is OUTSIDE the body wrapper.
-                            // So, if Right col has Diff and Left doesn't, the Left Total will be lower than Right Total 
-                            // because Right Total is pushed UP by the Diff section.
-                            // FIX: Add an invisible Diff section to the Left Column!
-                            view_mode === 'Comparison' ? `
-                            <div class="spacer-section" style="height: 40px;"></div>
-                            <div class="spacer-section" style="border-top: 1px solid transparent;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${active_currencies.map(c => `<tr class="xl-row" style="visibility:hidden"><td></td><td></td><td>DIFF</td><td>0.00</td></tr>`).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                            ` : ''
-                            }
+                            <div class="footer-container">${footer_html}${diff_html}</div>
                         </div>`;
             };
 
-            let left = (view_mode !== 'Requested') ? buildColumnHTML(res_std.rows, res_std.totals, title_std, false) : "";
-            let right = (view_mode !== 'Standard') ? buildColumnHTML(res_req.rows, res_req.totals, title_req, view_mode === 'Comparison') : "";
+            let left = (view_mode !== 'Requested') ? buildColumnHTML(rows_std, res_std.totals, title_std, false) : "";
+            let right = (view_mode !== 'Standard') ? buildColumnHTML(rows_req, res_req.totals, title_req, view_mode === 'Comparison') : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
-                container_html = `<div class="comparison-container">${left}${right}</div>`;
+                container_html = `<div class="comparison-container"><div class="comparison-col">${left}</div><div class="comparison-col">${right}</div></div>`;
             } else {
                 container_html = `<div style="width:100%;">${left || right}</div>`;
             }
@@ -521,15 +484,16 @@
         // --- CALCULATOR COMPONENT ---
         const DestCalcTool = () => {
             const [globals, setGlobals] = useState({ ref: '', cbm: 3.0, kgs: 250, pkgs: 3, viewMode: 'Comparison' });
-            const [stdData, setStdData] = useState({ sections: [], items: [], title: 'Standard' });
-            const [reqData, setReqData] = useState({ sections: [], items: [], title: 'Requested' });
-            const [mgrData, setMgrData] = useState({ sections: [], items: [], title: '' }); // MANAGER DATA
+            const [stdData, setStdData] = useState({ sections: [], items: [], title: '' });
+            const [reqData, setReqData] = useState({ sections: [], items: [], title: '' });
+            const [mgrData, setMgrData] = useState({ sections: [], items: [], title: '' });
             const [presets, setPresets] = useState(DEFAULT_PRESETS);
             const [history, setHistory] = useState([]);
             const [activeSubTab, setActiveSubTab] = useState('std');
             const [htmlOutput, setHtmlOutput] = useState('');
             const [selectedPresetName, setSelectedPresetName] = useState('Create New...');
-            const [showSidebar, setShowSidebar] = useState(true);
+            const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+            const [showAdvanced, setShowAdvanced] = useState(false);
 
             useEffect(() => {
                 const saved = localStorage.getItem('dest_calc_v1');
@@ -541,26 +505,21 @@
                     setPresets({ ...DEFAULT_PRESETS, ...(d.presets || {}) });
                     setHistory(d.history || []);
                 } else {
-                    // Initial load default
-                    setStdData(JSON.parse(JSON.stringify(DEFAULT_PRESETS["SEA MASTER STANDARD"])));
+                    setStdData(JSON.parse(JSON.stringify(DEFAULT_PRESETS["SEA MASTER STANDARD - NON DG"])));
+                    setReqData({ sections: [], items: [], title: 'Requested Charges' });
                 }
-                // Initial calculation on mount
-                setTimeout(runReportCalculation, 100);
             }, []);
 
-            // Only save to local storage on changes, do NOT auto-calculate report
             useEffect(() => {
-                localStorage.setItem('dest_calc_v1', JSON.stringify({ globals, std: stdData, req: reqData, presets, history }));
+                 setTimeout(() => {
+                    const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
+                    const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
+                    setHtmlOutput(generateReportHTML(resStd, resReq, globals.viewMode, stdData.title, reqData.title));
+                    localStorage.setItem('dest_calc_v1', JSON.stringify({ globals, std: stdData, req: reqData, presets, history }));
+                 }, 50);
             }, [globals, stdData, reqData, presets, history]);
 
-            const runReportCalculation = () => {
-                 const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
-                 const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
-                 setHtmlOutput(generateReportHTML(resStd, resReq, globals.viewMode, stdData.title, reqData.title));
-            };
-
-            // Helper to pick which data object to modify based on active tab
-            const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? req_data : mgrData);
+            const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? reqData : mgrData);
             const setTargetData = (target, newData) => {
                 if (target === 'std') setStdData(newData);
                 else if (target === 'req') setReqData(newData);
@@ -574,7 +533,8 @@
                 setTargetData(target, newData);
             };
 
-            const addSection = (target, type) => {
+            const addSection = (target) => {
+                const type = document.getElementById(`${target}-add-type`).value;
                 const prev = getTargetData(target);
                 const newSec = { type, data: { curr: 'EUR', rt: 0, ton: 0, min: 0, heavy: 0, light: 0, high: 0, rate: 0, min_days: 0, days: 0, unit: 'RT' } };
                 setTargetData(target, { ...prev, sections: [...prev.sections, newSec] });
@@ -603,25 +563,18 @@
             };
 
             const loadPreset = (target, presetName) => {
-                if(presets[presetName]) {
-                    const copy = JSON.parse(JSON.stringify(presets[presetName]));
-                    setTargetData(target, copy);
-                }
+                if(presets[presetName]) setTargetData(target, JSON.parse(JSON.stringify(presets[presetName])));
             };
 
-            // --- Manager Specific Handlers ---
             const handleMgrSelect = (val) => {
                 setSelectedPresetName(val);
-                if (val === 'Create New...') {
-                    setMgrData({ sections: [], items: [], title: '' });
-                } else if (presets[val]) {
-                    setMgrData(JSON.parse(JSON.stringify(presets[val])));
-                }
+                if (val === 'Create New...') setMgrData({ sections: [], items: [], title: '' });
+                else if (presets[val]) setMgrData(JSON.parse(JSON.stringify(presets[val])));
             };
 
             const handleSavePreset = () => {
-                const name = mgrData.title.trim();
-                if(!name) return alert("Please enter a Preset Name (Section Title).");
+                const name = mgrData.title.trim() || document.getElementById('mgr-name-input').value;
+                if(!name) return alert("Please enter a Preset Name.");
                 setPresets(prev => ({ ...prev, [name]: mgrData }));
                 setSelectedPresetName(name);
                 alert(`Preset "${name}" saved.`);
@@ -635,8 +588,17 @@
                 setPresets(newPresets);
                 handleMgrSelect('Create New...');
             };
+
+            const saveSnapshot = () => {
+                const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
+                const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
+                let summary = {};
+                CURRENCIES.forEach(c => { if(resStd.totals[c] > 0 || resReq.totals[c] > 0) summary[c] = { std: resStd.totals[c], diff: resStd.totals[c] - resReq.totals[c] }; });
+                const newHist = { id: Date.now(), timestamp: new Date().toLocaleTimeString(), ref: globals.ref || "No Ref", cbm: globals.cbm, summary, snap_std: stdData, snap_req: reqData };
+                setHistory([newHist, ...history].slice(0, 50));
+            };
             
-             const handleImportJSON = (e) => {
+            const handleImportJSON = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
@@ -648,222 +610,130 @@
                     } catch (err) { alert("Invalid JSON file."); }
                 };
                 reader.readAsText(file);
-                e.target.value = ''; // Reset
+                e.target.value = '';
             };
-
-            const handleExportJSON = () => {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", "dest_calc_presets.json");
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-            };
-
-
-            const saveSnapshot = () => {
-                const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
-                const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
-                let summary = {};
-                CURRENCIES.forEach(c => { if(resStd.totals[c] > 0 || resReq.totals[c] > 0) summary[c] = { std: resStd.totals[c], diff: resStd.totals[c] - resReq.totals[c] }; });
-                const newHist = { id: Date.now(), timestamp: new Date().toLocaleTimeString(), ref: globals.ref || "No Ref", cbm: globals.cbm, summary, snap_std: stdData, snap_req: reqData };
-                setHistory([newHist, ...history].slice(0, 50));
-            };
-
-            const loadHistory = (h) => {
-                setGlobals(p => ({ ...p, ref: h.ref, cbm: h.cbm }));
-                setStdData(h.snap_std);
-                setReqData(h.snap_req);
-            };
-
-            const deleteHistory = (id) => { setHistory(history.filter(h => h.id !== id)); };
 
             const renderInputs = (target, data) => (
                 <div className="space-y-4">
-                    {/* Header & Preset Loader (Only show preset loader for std/req tabs, not mgr) */}
-                    {target !== 'mgr' && (
+                    {target !== 'mgr' ? (
                         <div className="flex gap-4 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <input className="font-bold bg-transparent outline-none w-full" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} placeholder="Section Title" />
-                            <select onChange={(e) => loadPreset(target, e.target.value)} className="text-xs border rounded p-1">
-                                <option>Load Preset...</option>
-                                {Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}
-                            </select>
+                             <div className="calc-input-grp"><label>Section Title</label><input className="calc-input-field" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} style={{fontWeight:600}} /></div>
                         </div>
-                    )}
-                    
-                    {/* Manager Specific Header */}
-                    {target === 'mgr' && (
+                    ) : (
                          <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 space-y-3">
                             <div className="flex gap-4 items-center">
-                                <div className="flex-1">
-                                    <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Select Preset to Edit</label>
-                                    <select value={selectedPresetName} onChange={e => handleMgrSelect(e.target.value)} className="w-full text-sm border rounded p-1.5">
-                                        <option>Create New...</option>
-                                        {Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Preset Name</label>
-                                    <input className="w-full text-sm border rounded p-1.5 font-bold" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} placeholder="e.g. CLIENT A - STANDARD" />
-                                </div>
+                                <div className="flex-1"><label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Select Preset</label><select value={selectedPresetName} onChange={e => handleMgrSelect(e.target.value)} className="w-full text-sm border rounded p-1.5"><option>Create New...</option>{Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                                <div className="flex-1"><label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Preset Name</label><input id="mgr-name-input" className="w-full text-sm border rounded p-1.5 font-bold" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} placeholder="e.g. CLIENT A" /></div>
                             </div>
-                            <div className="flex gap-2">
-                                <button onClick={handleSavePreset} className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-emerald-700 flex items-center gap-1"><Icons.Save size={14}/> Save Preset</button>
-                                <button onClick={handleDeletePreset} className="bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-rose-700 flex items-center gap-1"><Icons.Trash2 size={14}/> Delete</button>
-                            </div>
+                            <div className="flex gap-2"><button onClick={handleSavePreset} className="c-btn c-btn-suc c-btn-sm">Save Preset</button><button onClick={handleDeletePreset} className="c-btn c-btn-dang c-btn-sm">Delete</button></div>
                         </div>
                     )}
+                    <div style={{background:'#f8fafc', padding:12, borderRadius:8, display:'flex', alignItems:'center', gap:12, marginBottom:16, border:'1px solid #e2e8f0'}}>
+                         <label style={{fontSize:13, fontWeight:600, color:'#64748b'}}>Add Charge:</label>
+                         <select id={`${target}-add-type`} style={{flexGrow:1, padding:6, borderRadius:4, border:'1px solid #cbd5e1'}}><option value="lcl">LCL (Weight/Measure)</option><option value="pier">Pier (Lifting)</option><option value="stor">Storage (Time)</option></select>
+                         <button className="c-btn c-btn-info c-btn-sm" onClick={() => addSection(target)}>+ Add Section</button>
+                    </div>
 
-                    {/* Complex Sections */}
                     {data.sections.map((sec, idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg flex flex-wrap gap-2 items-end relative shadow-sm hover:shadow-md transition-shadow">
-                            <div className="absolute top-1 right-1"><button onClick={() => removeSection(target, idx)} className="text-rose-400 hover:text-rose-600"><Icons.Trash2 size={14} /></button></div>
-                            <span className="text-xs font-bold text-slate-400 w-12">{sec.type.toUpperCase()}</span>
-                            <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">CUR</label><select className="text-xs border rounded p-1" value={sec.data.curr} onChange={e => updateSection(target, idx, 'curr', e.target.value)}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select></div>
-                            {sec.type === 'lcl' && <>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">CBM</label><input type="number" className="text-xs border rounded p-1 w-16" value={sec.data.rt} onChange={e => updateSection(target, idx, 'rt', e.target.value)} /></div>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">TON</label><input type="number" className="text-xs border rounded p-1 w-16" value={sec.data.ton} onChange={e => updateSection(target, idx, 'ton', e.target.value)} /></div>
-                            </>}
-                            {sec.type === 'pier' && <>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">HVY</label><input type="number" className="text-xs border rounded p-1 w-14" value={sec.data.heavy} onChange={e => updateSection(target, idx, 'heavy', e.target.value)} /></div>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">LGT</label><input type="number" className="text-xs border rounded p-1 w-14" value={sec.data.light} onChange={e => updateSection(target, idx, 'light', e.target.value)} /></div>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">HIGH</label><input type="number" className="text-xs border rounded p-1 w-14" value={sec.data.high} onChange={e => updateSection(target, idx, 'high', e.target.value)} /></div>
-                            </>}
-                            {sec.type === 'stor' && <>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">RATE</label><input type="number" className="text-xs border rounded p-1 w-16" value={sec.data.rate} onChange={e => updateSection(target, idx, 'rate', e.target.value)} /></div>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">MIN.D</label><input type="number" className="text-xs border rounded p-1 w-12" value={sec.data.min_days} onChange={e => updateSection(target, idx, 'min_days', e.target.value)} /></div>
-                                <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">DAYS</label><input type="number" className="text-xs border rounded p-1 w-12" value={sec.data.days} onChange={e => updateSection(target, idx, 'days', e.target.value)} /></div>
-                            </>}
-                            <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-400">MIN</label><input type="number" className="text-xs border rounded p-1 w-14" value={sec.data.min} onChange={e => updateSection(target, idx, 'min', e.target.value)} /></div>
+                        <div key={idx} className={`complex-section ${sec.type === 'pier' ? 'pier-layout' : ''}`}>
+                            <div className="section-label">{sec.type.toUpperCase()}</div>
+                            <div className="calc-input-grp"><label>CUR</label><select className="calc-input-field" value={sec.data.curr} onChange={e => updateSection(target, idx, 'curr', e.target.value)}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select></div>
+                            {sec.type === 'lcl' && <><div className="calc-input-grp"><label>CBM RATE</label><input type="number" className="calc-input-field" value={sec.data.rt} onChange={e => updateSection(target, idx, 'rt', e.target.value)} /></div><div className="calc-input-grp"><label>TON RATE</label><input type="number" className="calc-input-field" value={sec.data.ton} onChange={e => updateSection(target, idx, 'ton', e.target.value)} /></div><div className="calc-input-grp"><label>MIN AMT</label><input type="number" className="calc-input-field" value={sec.data.min} onChange={e => updateSection(target, idx, 'min', e.target.value)} /></div></>}
+                            {sec.type === 'pier' && <><div className="calc-input-grp"><label>&gt;20KG</label><input type="number" className="calc-input-field" value={sec.data.heavy} onChange={e => updateSection(target, idx, 'heavy', e.target.value)} /></div><div className="calc-input-grp"><label>&lt;20KG</label><input type="number" className="calc-input-field" value={sec.data.light} onChange={e => updateSection(target, idx, 'light', e.target.value)} /></div><div className="calc-input-grp"><label>HIGH VOL</label><input type="number" className="calc-input-field" value={sec.data.high} onChange={e => updateSection(target, idx, 'high', e.target.value)} /></div><div className="calc-input-grp"><label>MIN</label><input type="number" className="calc-input-field" value={sec.data.min} onChange={e => updateSection(target, idx, 'min', e.target.value)} /></div></>}
+                            {sec.type === 'stor' && <><div className="calc-input-grp"><label>RATE</label><input type="number" className="calc-input-field" value={sec.data.rate} onChange={e => updateSection(target, idx, 'rate', e.target.value)} /></div><div className="calc-input-grp"><label>UNIT</label><select className="calc-input-field" value={sec.data.unit} onChange={e => updateSection(target, idx, 'unit', e.target.value)}>{['RT','BL','FLAT','PKG','TON','CBM'].map(u => <option key={u}>{u}</option>)}</select></div><div className="calc-input-grp"><label>MIN DAYS</label><input type="number" className="calc-input-field" value={sec.data.min_days} onChange={e => updateSection(target, idx, 'min_days', e.target.value)} /></div><div className="calc-input-grp"><label>ACT DAYS</label><input type="number" className="calc-input-field" value={sec.data.days} onChange={e => updateSection(target, idx, 'days', e.target.value)} /></div></>}
+                            <button className="c-btn c-btn-dang c-btn-icon" onClick={() => removeSection(target, idx)}>×</button>
                         </div>
                     ))}
-                    <div className="flex gap-2 text-xs">
-                        <button onClick={() => addSection(target, 'lcl')} className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">+ LCL</button>
-                        <button onClick={() => addSection(target, 'pier')} className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">+ Pier</button>
-                        <button onClick={() => addSection(target, 'stor')} className="px-2 py-1 bg-slate-100 rounded hover:bg-slate-200">+ Stor</button>
-                    </div>
-
-                    {/* Line Items */}
-                    <div className="mt-4">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Extra Items</div>
-                        {data.items.map((item, idx) => (
-                            <div key={idx} className="flex gap-1 mb-1 items-center flex-wrap sm:flex-nowrap">
-                                <input className="text-xs border rounded p-1 w-full sm:w-auto sm:flex-grow" placeholder="Item Name" value={item.name} onChange={e => updateItem(target, idx, 'name', e.target.value)} />
-                                <select className="text-xs border rounded p-1 w-14" value={item.curr} onChange={e => updateItem(target, idx, 'curr', e.target.value)}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
-                                <input className="text-xs border rounded p-1 w-16" type="number" placeholder="Price" value={item.price} onChange={e => updateItem(target, idx, 'price', e.target.value)} />
-                                <select className="text-xs border rounded p-1 w-16" value={item.unit} onChange={e => updateItem(target, idx, 'unit', e.target.value)}>{['RT','BL','FLAT','PKG'].map(u => <option key={u}>{u}</option>)}</select>
-                                
-                                {/* RESTORED MINIMUM FIELDS */}
-                                <select className="text-xs border rounded p-1 w-16" value={item.min_type || 'None'} onChange={e => updateItem(target, idx, 'min_type', e.target.value)}>
-                                    <option value="None">-</option>
-                                    <option value="Amt">Amt</option>
-                                    <option value="Unit">Unit</option>
-                                </select>
-                                <input className="text-xs border rounded p-1 w-14" type="number" placeholder="Min" value={item.min_val || 0} onChange={e => updateItem(target, idx, 'min_val', e.target.value)} />
-
-                                <button onClick={() => removeItem(target, idx)} className="text-rose-400 hover:text-rose-600"><Icons.Trash2 size={14} /></button>
-                            </div>
-                        ))}
-                        <button onClick={() => addItem(target)} className="text-xs text-blue-600 hover:underline mt-1">+ Add Item</button>
-                    </div>
-
+                    <div style={{margin:'24px 0 8px 0', fontSize:12, fontWeight:700, color:'#64748b', textTransform:'uppercase'}}>Extra Line Items</div>
+                    <div className="items-header"><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>NAME</label><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>CUR</label><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>PRICE</label><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>UNIT</label><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>MIN TYPE</label><label style={{fontSize:10,fontWeight:700,color:'#94a3b8'}}>MIN VAL</label><span></span></div>
+                    {data.items.map((item, idx) => (
+                        <div key={idx} className="item-row">
+                            <input className="calc-input-field" placeholder="Desc" value={item.name} onChange={e => updateItem(target, idx, 'name', e.target.value)} />
+                            <select className="calc-input-field" value={item.curr} onChange={e => updateItem(target, idx, 'curr', e.target.value)}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                            <input type="number" className="calc-input-field" placeholder="0" value={item.price} onChange={e => updateItem(target, idx, 'price', e.target.value)} />
+                            <select className="calc-input-field" value={item.unit} onChange={e => updateItem(target, idx, 'unit', e.target.value)}>{['RT','BL','FLAT','PKG','TON','CBM'].map(u => <option key={u}>{u}</option>)}</select>
+                            <select className="calc-input-field" value={item.min_type||'None'} onChange={e => updateItem(target, idx, 'min_type', e.target.value)}><option value="None">-</option><option value="Amt">Amt</option><option value="Unit">Unit</option></select>
+                            <input type="number" className="calc-input-field" value={item.min_val||0} onChange={e => updateItem(target, idx, 'min_val', e.target.value)} />
+                            <button className="c-btn c-btn-dang c-btn-icon" onClick={() => removeItem(target, idx)}>×</button>
+                        </div>
+                    ))}
+                    <button className="c-btn c-btn-sec" style={{width:'100%', marginTop:10, borderStyle:'dashed'}} onClick={() => addItem(target)}>+ Add Line Item</button>
                     {target === 'mgr' && (
                         <div className="mt-6 pt-6 border-t border-slate-200">
-                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Advanced Tools</h4>
-                             <div className="flex gap-2">
-                                 <button onClick={handleExportJSON} className="bg-slate-100 border border-slate-300 text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-200 flex items-center gap-1"><Icons.Download size={14}/> Export JSON</button>
-                                 <label className="bg-slate-100 border border-slate-300 text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-200 flex items-center gap-1 cursor-pointer">
-                                     <Icons.Plus size={14}/> Import JSON
-                                     <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
-                                 </label>
-                             </div>
+                             <div className="flex cursor-pointer text-xs font-bold text-slate-500 items-center gap-1 mb-2" onClick={() => setShowAdvanced(!showAdvanced)}><span>⚙️ Advanced Options</span><span>{showAdvanced ? '▼' : '►'}</span></div>
+                             {showAdvanced && (
+                                <div className="bg-slate-50 p-4 rounded border border-slate-200 animate-fade">
+                                     <div className="flex gap-2">
+                                         <button onClick={() => {const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(presets,null,2)],{type:"application/json"}));a.download="presets.json";a.click();}} className="c-btn c-btn-info c-btn-sm">Export JSON</button>
+                                         <label className="c-btn c-btn-sec c-btn-sm cursor-pointer">Import JSON<input type="file" accept=".json" onChange={handleImportJSON} className="hidden" /></label>
+                                     </div>
+                                </div>
+                             )}
                         </div>
                     )}
                 </div>
             );
 
             return (
-                <div className="flex flex-col lg:flex-row gap-6 h-full">
-                    {/* Main Work Area */}
-                    <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-y-auto">
-                        {/* Global Inputs */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200 relative">
-                            <div className="col-span-2 md:col-span-1"><label className="text-[10px] font-bold text-slate-400">JOB REF</label><input className="w-full text-sm border rounded p-1.5" value={globals.ref} onChange={e => setGlobals({...globals, ref: e.target.value})} placeholder="HMB-..." /></div>
-                            <div><label className="text-[10px] font-bold text-slate-400">CBM</label><input type="number" className="w-full text-sm border rounded p-1.5 calc-input" value={globals.cbm} onChange={e => setGlobals({...globals, cbm: e.target.value})} /></div>
-                            <div><label className="text-[10px] font-bold text-slate-400">KGS</label><input type="number" className="w-full text-sm border rounded p-1.5 calc-input" value={globals.kgs} onChange={e => setGlobals({...globals, kgs: e.target.value})} /></div>
-                            <div><label className="text-[10px] font-bold text-slate-400">PKGS</label><input type="number" className="w-full text-sm border rounded p-1.5 calc-input" value={globals.pkgs} onChange={e => setGlobals({...globals, pkgs: e.target.value})} /></div>
-                            <div className="flex items-end gap-2">
-                                <button onClick={saveSnapshot} className="flex-1 bg-blue-600 text-white text-xs font-bold py-2 rounded hover:bg-blue-700 transition-colors">📸 SNAP</button>
-                                <button onClick={() => setShowSidebar(!showSidebar)} className={`w-8 h-8 flex items-center justify-center rounded border transition-colors ${showSidebar ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}`} title="Toggle History Sidebar">
-                                    <Icons.Scroll size={16} />
-                                </button>
-                            </div>
+                <div className="calc-wrapper">
+                    <div className="calc-main">
+                        <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+                            <div><h3 className="font-bold text-xl text-slate-800">Destination Charges Calculator</h3><span className="text-xs text-slate-500">Comparison & Generation Tool</span></div>
+                            <div className="flex gap-2"><button className="c-btn c-btn-sec" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}><Icons.Scroll size={16}/> History</button></div>
                         </div>
-
-                        {/* Editor Tabs */}
-                        <div className="flex gap-2 mb-4 border-b border-slate-200 pb-2 overflow-x-auto">
-                            <button onClick={() => setActiveSubTab('std')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='std' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Standard</button>
-                            <button onClick={() => setActiveSubTab('req')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='req' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Requested</button>
-                            <button onClick={() => setActiveSubTab('mgr')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='mgr' ? 'bg-amber-600 text-white shadow-sm' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}>Manage Presets</button>
+                        <div className="calc-inputs">
+                            <div className="calc-input-grp" style={{flex:2}}><label>Job Reference #</label><input className="calc-input-field" placeholder="e.g. HMB-2023-001" value={globals.ref} onChange={e => setGlobals({...globals, ref: e.target.value})} /></div>
+                            <div className="calc-input-grp narrow"><label>CBM (m³)</label><input type="number" className="calc-input-field" value={globals.cbm} onChange={e => setGlobals({...globals, cbm: e.target.value})} /></div>
+                            <div className="calc-input-grp narrow"><label>KGS</label><input type="number" className="calc-input-field" value={globals.kgs} onChange={e => setGlobals({...globals, kgs: e.target.value})} /></div>
+                            <div className="calc-input-grp narrow"><label>PKGS</label><input type="number" className="calc-input-field" value={globals.pkgs} onChange={e => setGlobals({...globals, pkgs: e.target.value})} /></div>
+                            <div className="calc-input-grp" style={{flex:'0 0 auto', paddingBottom:1}}><button className="c-btn c-btn-pri" onClick={saveSnapshot}>📸 Snap</button></div>
                         </div>
-
-                        {/* Editor Content */}
-                        <div className="mb-8">
+                        <div className="calc-tabs">
+                            <div onClick={() => setActiveSubTab('std')} className={`calc-tab-btn ${activeSubTab==='std'?'active':''}`}>Standard (Left)</div>
+                            <div onClick={() => setActiveSubTab('req')} className={`calc-tab-btn ${activeSubTab==='req'?'active':''}`}>Requested (Right)</div>
+                            <div onClick={() => setActiveSubTab('mgr')} className={`calc-tab-btn ${activeSubTab==='mgr'?'active':''}`}>Manage Presets</div>
+                        </div>
+                        <div className="animate-fade">
+                            {activeSubTab !== 'mgr' && (
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex gap-2 items-center">
+                                        <select className="text-xs border rounded p-1" onChange={(e) => loadPreset(activeSubTab, e.target.value)}><option>Load Preset...</option>{Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}</select>
+                                    </div>
+                                </div>
+                            )}
                             {activeSubTab === 'std' && renderInputs('std', stdData)}
                             {activeSubTab === 'req' && renderInputs('req', reqData)}
                             {activeSubTab === 'mgr' && renderInputs('mgr', mgrData)}
                         </div>
-
-                        {/* Output Controls (Hide in Manager Mode) */}
                         {activeSubTab !== 'mgr' && (
-                            <>
-                                <div className="flex justify-between items-center border-t border-slate-200 pt-4 mb-4">
-                                    <select value={globals.viewMode} onChange={e => setGlobals({...globals, viewMode: e.target.value})} className="text-sm font-bold border rounded p-2">
-                                        <option value="Comparison">Comparison View</option>
-                                        <option value="Standard">Standard Only</option>
-                                        <option value="Requested">Requested Only</option>
-                                    </select>
-                                    <button onClick={runReportCalculation} className="bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded hover:bg-emerald-600 transition-colors shadow-sm">GENERATE REPORT</button>
+                            <div className="mt-8 pt-6 border-t border-slate-200">
+                                <div className="flex justify-center items-center gap-4 mb-6">
+                                    <label className="text-sm font-bold text-slate-500">VIEW MODE:</label>
+                                    <select value={globals.viewMode} onChange={e => setGlobals({...globals, viewMode: e.target.value})} className="border rounded p-2 text-sm font-bold w-56"><option value="Comparison">Side-by-Side Comparison</option><option value="Standard">Standard Only</option><option value="Requested">Requested Only</option></select>
                                 </div>
-                                <div className="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[300px]" dangerouslySetInnerHTML={{__html: htmlOutput}}></div>
-                            </>
+                                <div dangerouslySetInnerHTML={{__html: htmlOutput}}></div>
+                            </div>
                         )}
                     </div>
-
-                    {/* History Sidebar */}
-                    {showSidebar && (
-                        <div className="w-full lg:w-72 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-[600px] lg:h-auto animate-fade">
-                            <div className="flex justify-between items-center mb-4">
-                                <h4 className="font-bold text-slate-700">Local History</h4>
-                                <button onClick={() => setHistory([])} className="text-[10px] text-slate-400 hover:text-rose-500">Clear All</button>
-                            </div>
-                            <div className="overflow-y-auto flex-grow space-y-2 pr-1">
-                                {history.length === 0 && <div className="text-center text-slate-400 text-xs mt-10">No snapshots yet.</div>}
-                                {history.map(h => (
-                                    <div key={h.id} onClick={() => loadHistory(h)} className="bg-slate-50 border border-slate-100 p-3 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-200 group relative transition-all">
-                                        <button onClick={(e) => {e.stopPropagation(); deleteHistory(h.id);}} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.Trash2 size={14} /></button>
-                                        <div className="font-bold text-xs text-blue-600 mb-1">{h.ref}</div>
-                                        <div className="text-[10px] text-slate-400 mb-2">{h.timestamp} | {h.cbm} m³</div>
-                                        {Object.entries(h.summary).map(([curr, val]) => (
-                                            <div key={curr} className="flex justify-between text-[10px]">
-                                                <span className="text-slate-600">{curr} {val.std.toFixed(2)}</span>
-                                                <span className={val.diff >= 0 ? 'text-rose-500 font-bold' : 'text-emerald-500 font-bold'}>
-                                                    {val.diff >= 0 ? '+' : ''}{val.diff.toFixed(2)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
+                    <div className={`calc-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+                        <div className="flex justify-between items-center mb-4"><h4>History</h4><button onClick={() => setHistory([])} className="text-[10px] text-slate-400 hover:text-rose-500">Clear All</button></div>
+                        <div className="space-y-2">
+                             {history.length === 0 && <div className="text-center text-slate-400 text-xs mt-10">No snapshots yet.</div>}
+                             {history.map(h => (
+                                <div key={h.id} className="history-card" onClick={() => {setGlobals(p => ({...p, ref: h.ref, cbm: h.cbm})); setStdData(h.snap_std); setReqData(h.snap_req);}}>
+                                    <button className="absolute top-2 right-2 text-slate-300 hover:text-rose-500" onClick={(e) => {e.stopPropagation(); setHistory(history.filter(x=>x.id!==h.id));}}>×</button>
+                                    <span className="history-ref">{h.ref}</span>
+                                    <div className="history-meta">{h.timestamp} | {h.cbm} m³</div>
+                                    <div className="text-[10px]">{Object.entries(h.summary).map(([curr, val]) => <div key={curr} className="flex justify-between"><span>{curr} {val.std.toFixed(2)}</span><span className={val.diff>=0?'text-rose-500 font-bold':'text-emerald-500 font-bold'}>{val.diff>=0?'+':''}{val.diff.toFixed(2)}</span></div>)}</div>
+                                </div>
+                             ))}
                         </div>
-                    )}
+                    </div>
                 </div>
             );
         };
 
         const VesselScheduleApp = () => {
-            // ... (All existing main app logic remains same)
             const [entries, setEntries] = useState([]);
             const [loading, setLoading] = useState(true);
             const [isAdmin, setIsAdmin] = useState(false);
@@ -912,7 +782,6 @@
                 return () => unsubscribe();
             }, []);
 
-            // ... (Rest of Firebase Sync logic, same as before)
             useEffect(() => {
                 if (window.db) {
                     const unsub = window.onSnapshot(
@@ -927,7 +796,6 @@
             const handleGoogleLogin = async () => { try { await window.signInWithPopup(window.auth, window.googleProvider); } catch (error) { alert("Login failed"); } };
             const handleLogout = async () => { await window.signOut(window.auth); await window.signInAnonymously(window.auth); setIsAdmin(false); setAuthErrorMsg(null); setActiveTab('schedule'); };
 
-            // ... (Keep all existing handler functions: handleEdit, saveEntry, removeEntry, etc. exactly as they were)
             const handleEdit = (entry) => { setFormData({ vessel: entry.vessel||'', voyage: entry.voyage||'', cfsClosing: entry.cfsClosing||'', etdHkg: entry.etdHkg||'', etaDest: entry.etaDest||'', destCode: entry.destCode||'', loadingDate: entry.loadingDate||'', carrier: entry.carrier||'', transitTime: entry.transitTime||'' }); setEditingId(entry.id); if(formTopRef.current) formTopRef.current.scrollIntoView({behavior:'smooth'}); };
             const cancelEditing = () => { setEditingId(null); setFormData({ vessel: '', voyage: '', cfsClosing: '', etdHkg: '', etaDest: '', destCode: 'HAM', loadingDate: '', carrier: '', transitTime: '' }); };
             const saveEntry = async (e) => { e.preventDefault(); if(!formData.vessel) return; if(!isAdmin) return alert("Access denied."); if(editingId) { await window.updateDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules', editingId), {...formData, updatedAt: new Date().toISOString()}); } else { await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'), {...formData, createdAt: new Date().toISOString()}); } setEditingId(null); setFormData({ vessel: '', voyage: '', cfsClosing: '', etdHkg: '', etaDest: '', destCode: formData.destCode, loadingDate: '', carrier: '', transitTime: '' }); };
