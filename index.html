@@ -37,6 +37,9 @@
         .calc-section:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         
         /* Report Styles for InnerHTML */
+        .xl-wrapper { margin-top: 10px; }
+        .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; }
+        .xl-info-box strong { color: #0f172a; }
         .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
         .xl-row td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; }
@@ -141,6 +144,7 @@
             Save: (props) => <IconWrapper {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconWrapper>,
             Download: (props) => <IconWrapper {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconWrapper>,
             Scroll: (props) => <IconWrapper {...props}><path d="M8 19h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/><path d="M12 11v4"/><path d="M8 7h8"/></IconWrapper>,
+            Refresh: (props) => <IconWrapper {...props}><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></IconWrapper>,
         };
 
         // --- SHARED COMPONENTS ---
@@ -353,6 +357,10 @@
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
             
+            // Add header with cargo details
+            let meta = res_std.meta;
+            let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
+
             const buildTable = (rows, totals, title, show_diff) => {
                 let rows_html = rows.map(r => 
                     `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`
@@ -388,8 +396,14 @@
             let left = (view_mode !== 'Requested') ? buildTable(res_std.rows, res_std.totals, title_std, false) : "";
             let right = (view_mode !== 'Standard') ? buildTable(res_req.rows, res_req.totals, title_req, view_mode === 'Comparison') : "";
 
-            if (view_mode === 'Comparison') return `<div class="comparison-container">${left}${right}</div>`;
-            return `<div style="width:100%;">${left || right}</div>`;
+            let container_html = "";
+            if (view_mode === 'Comparison') {
+                container_html = `<div class="comparison-container">${left}${right}</div>`;
+            } else {
+                container_html = `<div style="width:100%;">${left || right}</div>`;
+            }
+
+            return `<div class='xl-wrapper'>${cargo_html}${container_html}</div>`;
         }
 
         // --- CALCULATOR COMPONENT ---
@@ -418,16 +432,20 @@
                     // Initial load default
                     setStdData(JSON.parse(JSON.stringify(DEFAULT_PRESETS["SEA MASTER STANDARD"])));
                 }
+                // Initial calculation on mount
+                setTimeout(runReportCalculation, 100);
             }, []);
 
+            // Only save to local storage on changes, do NOT auto-calculate report
             useEffect(() => {
                 localStorage.setItem('dest_calc_v1', JSON.stringify({ globals, std: stdData, req: reqData, presets, history }));
-                
-                // Auto calc report on change
-                const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
-                const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
-                setHtmlOutput(generateReportHTML(resStd, resReq, globals.viewMode, stdData.title, reqData.title));
             }, [globals, stdData, reqData, presets, history]);
+
+            const runReportCalculation = () => {
+                 const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
+                 const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
+                 setHtmlOutput(generateReportHTML(resStd, resReq, globals.viewMode, stdData.title, reqData.title));
+            };
 
             // Helper to pick which data object to modify based on active tab
             const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? reqData : mgrData);
@@ -694,6 +712,7 @@
                                         <option value="Standard">Standard Only</option>
                                         <option value="Requested">Requested Only</option>
                                     </select>
+                                    <button onClick={runReportCalculation} className="bg-emerald-500 text-white font-bold text-sm px-4 py-2 rounded hover:bg-emerald-600 transition-colors shadow-sm">GENERATE REPORT</button>
                                 </div>
                                 <div className="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[300px]" dangerouslySetInnerHTML={{__html: htmlOutput}}></div>
                             </>
