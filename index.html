@@ -5,18 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vessel Schedule Manager</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
@@ -31,7 +27,7 @@
         .fade-enter { opacity: 0; transform: translateY(10px); }
         .fade-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms, transform 300ms; }
         
-        /* --- DEST CALCULATOR RESTORED STYLES --- */
+        /* --- DEST CALCULATOR STYLES --- */
         :root {
             --dest-primary: #2563eb; 
             --dest-secondary: #64748b; 
@@ -91,6 +87,7 @@
         /* Items Grid */
         .dest-item-row { display: grid; grid-template-columns: 2fr 0.8fr 1fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; padding: 6px 8px; background: #fff; border: 1px solid var(--dest-border); border-radius: 6px; }
         .dest-item-row:hover { border-color: var(--dest-primary); }
+        .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
 
         /* Responsive */
         @media (max-width: 900px) { 
@@ -100,24 +97,137 @@
             .dest-section-label, .dest-btn-remove { grid-column: 1 / -1; width: 100%; justify-content: flex-start; }
             .dest-global-inputs { gap: 15px; }
         }
-        
-        /* Report Styles */
+
+        /* --- NEW COMPARISON TABLE STYLES --- */
         .xl-wrapper { margin-top: 10px; }
-        .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; }
-        .xl-info-box strong { color: #0f172a; }
-        .xl-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; } 
-        .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 4px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        .xl-row td { padding: 4px 4px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; overflow-wrap: break-word; }
-        .xl-row:nth-child(even) { background-color: #fcfcfc; }
-        .col-amt { text-align: right; font-weight: 600; font-family: 'Inter', sans-serif; font-variant-numeric: slashed-zero tabular-nums; color: #0f172a; }
-        .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
-        .calc-subtext { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
-        
-        .comparison-container { display: flex; gap: 24px; }
-        .comparison-col { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
-        .table-title { padding: 12px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
-        
+        .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; align-items: center; }
+
+        .comparison-container { 
+            display: flex; 
+            gap: 20px; 
+            align-items: stretch; 
+        }
+
+        /* The Individual Column Card */
+        .comparison-col { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            background: white; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .comparison-col:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
         @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
+
+        /* Header Areas */
+        .comp-header {
+            padding: 16px 20px;
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Standard Side (Left) - Professional Blue/Slate */
+        .comp-header.std {
+            background: #f8fafc;
+            color: #475569;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        /* Requested Side (Right) - Actionable Blue/Indigo */
+        .comp-header.req {
+            background: #eff6ff;
+            color: #1e40af;
+            border-bottom: 2px solid #bfdbfe;
+        }
+
+        /* Table Content */
+        .comp-body {
+            flex: 1;
+            padding: 0;
+        }
+
+        .comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .comp-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .comp-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comp-item-name { font-weight: 600; color: #0f172a; width: 25%; }
+        .comp-item-desc { color: #64748b; font-size: 11px; width: 45%; }
+        .comp-item-curr { text-align: right; color: #94a3b8; font-weight: 500; width: 10%; }
+        .comp-item-amt { text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace; width: 20%; }
+
+        /* The "Grand Total" Footer */
+        .comp-footer {
+            background: #fff;
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .comp-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .comp-total-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .comp-total-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            font-family: 'Inter', sans-serif; /* Clean sans-serif for big numbers */
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Difference Badge (The "Diff" Pill) */
+        .comp-diff-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .diff-positive { background: #fee2e2; color: #b91c1c; } /* Red (More Expensive) */
+        .diff-negative { background: #dcfce7; color: #15803d; } /* Green (Cheaper/Savings) */
+        .diff-neutral { background: #f1f5f9; color: #64748b; }
 
         /* Input focus rings */
         input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
@@ -127,7 +237,6 @@
 
     <div id="root"></div>
 
-    <!-- Firebase Initialization -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -418,134 +527,118 @@
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
             let meta = res_std.meta;
-            let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
+            
+            // Cargo Summary Header
+            let cargo_html = `
+                <div class="xl-info-box" style="justify-content: space-between; background:white; border-left: 4px solid #3b82f6;">
+                    <div><strong style="color:#3b82f6">JOB REFERENCE:</strong> ${title_req || 'N/A'}</div>
+                    <div style="font-family:'JetBrains Mono', monospace; font-size:11px;">
+                        <span style="background:#f1f5f9; padding:2px 6px; rounded:4px;">CBM: ${meta.cbm.toFixed(3)}</span>
+                        <span style="background:#f1f5f9; padding:2px 6px; rounded:4px; margin-left:8px;">KGS: ${meta.kgs.toFixed(3)}</span>
+                        <span style="background:#f1f5f9; padding:2px 6px; rounded:4px; margin-left:8px;">PKGS: ${meta.pkgs}</span>
+                    </div>
+                </div>`;
 
-            // PADDING LOGIC (Visual padding only, does not affect calculation)
+            // Padding Logic for Alignment
             let rows_std = [...res_std.rows];
             let rows_req = [...res_req.rows];
 
-            // In Comparison mode, we need to ensure both sides have the SAME number of visual rows (Items + Pad)
-            // so that the Footer Table starts at the exact same Y-position.
             if (view_mode === 'Comparison') {
                 let max_len = Math.max(rows_std.length, rows_req.length);
                 while (rows_std.length < max_len) rows_std.push({ is_pad: true });
                 while (rows_req.length < max_len) rows_req.push({ is_pad: true });
             }
 
-            const buildColumnHTML = (rows, totals, title, show_diff) => {
-                // 1. Items Table Body
+            const buildCard = (type, rows, totals, title, compare_totals) => {
+                const isStd = type === 'std';
+                
+                // 1. Build Items
                 let rows_html = rows.map(r => {
-                    if (r.is_pad) return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
-                    return `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`;
+                    if (r.is_pad) return `<tr><td colspan="4" style="height:33px;">&nbsp;</td></tr>`; // Match height of normal row
+                    return `
+                        <tr>
+                            <td class="comp-item-name">${r.item}</td>
+                            <td class="comp-item-desc">${r.desc}</td>
+                            <td class="comp-item-curr">${r.curr}</td>
+                            <td class="comp-item-amt">${r.amount.toFixed(2)}</td>
+                        </tr>`;
                 }).join('');
 
-                if (!rows_html) rows_html = `<tr class="xl-row"><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">No charges</td></tr>`;
+                if (!rows_html) rows_html = `<tr><td colspan="4" style="padding:40px; text-align:center; color:#cbd5e1;">No charges calculated</td></tr>`;
 
-                // 2. Footer Table Body (Totals)
+                // 2. Build Footer (Totals)
                 let footer_html = "";
+                
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        // Show if >0 OR if we are in comparison mode (to maintain alignment with other side)
-                        if (val > 0 || view_mode === 'Comparison') { 
-                             footer_html += `
-                                <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                                    <td colspan="2"></td>
-                                    <td class="col-curr" style="color: #64748b;">TOTAL ${c}</td>
-                                    <td class="col-amt" style="color: #0f172a;">${val.toFixed(2)}</td>
-                                </tr>`;
+                        let diff_html = "";
+
+                        // Only calculate/show Diff on the Requested (Right) side
+                        if (!isStd && compare_totals) {
+                            let refVal = compare_totals[c] || 0;
+                            let diff = val - refVal; // Current - Standard
+                            if (Math.abs(diff) > 0.01) {
+                                let isSavings = diff < 0; 
+                                let sign = diff > 0 ? "+" : "";
+                                let colorClass = isSavings ? "diff-negative" : "diff-positive"; // Green if cheaper, Red if more expensive
+                                let label = isSavings ? "SAVINGS" : "EXTRA COST";
+                                
+                                diff_html = `
+                                    <div class="comp-diff-badge ${colorClass}">
+                                        ${label}: ${c} ${sign}${diff.toFixed(2)}
+                                    </div>
+                                `;
+                            } else {
+                                diff_html = `<div class="comp-diff-badge diff-neutral">NO CHANGE</div>`;
+                            }
+                        }
+
+                        // Only render if there is a value or we are aligning comparison
+                        if (val > 0 || view_mode === 'Comparison') {
+                            footer_html += `
+                                <div style="margin-bottom: 12px;">
+                                    <div class="comp-total-row">
+                                        <span class="comp-total-label">Total ${c}</span>
+                                        <span class="comp-total-value">${c} ${val.toFixed(2)}</span>
+                                    </div>
+                                    ${diff_html}
+                                </div>
+                            `;
                         }
                     });
                 } else {
-                     footer_html += `
-                        <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                            <td colspan="2"></td>
-                            <td class="col-curr" style="color: #64748b;">TOTAL</td>
-                            <td class="col-amt" style="color: #0f172a;">0.00</td>
-                        </tr>`;
+                    footer_html = `<div class="comp-total-row"><span class="comp-total-label">Total</span><span class="comp-total-value">0.00</span></div>`;
                 }
 
-                // 3. Diff Table Body (Difference) - SEPARATE TABLE or SPACER ROW
-                let diff_html = "";
-                // Always generate diff content for spacing purposes in comparison mode
-                if (view_mode === 'Comparison') {
-                    active_currencies.forEach(c => {
-                        let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
-                        let sign = diff >= 0 ? "+" : "";
-                        let color = diff >= 0 ? "#b45309" : "#059669"; 
-                        let bg = diff >= 0 ? "#fff7ed" : "#ecfdf5";
+                return `
+                    <div class="comparison-col">
+                        <div class="comp-header ${isStd ? 'std' : 'req'}">
+                            <span>${title}</span>
+                            ${isStd ? '<span style="opacity:0.5; font-size:10px;">REFERENCE</span>' : '<span style="opacity:0.5; font-size:10px;">TARGET</span>'}
+                        </div>
                         
-                        diff_html += `
-                            <tr class="xl-row" style="background-color: ${bg}; border-top: 1px dashed ${color}; font-weight: 700; color: ${color};">
-                                <td colspan="2"></td>
-                                <td class="col-curr">DIFF ${c}</td>
-                                <td class="col-amt">${sign}${diff.toFixed(2)}</td>
-                            </tr>`;
-                    });
-                }
-
-                // Use fixed col widths to ensure alignment across separate tables
-                const colGroup = `<colgroup><col style="width:22%"><col style="width:48%"><col style="width:12%"><col style="width:18%"></colgroup>`;
-
-                return `<div class="comparison-col">
-                            <div class="table-title">${title}</div>
-                            
-                            <!-- Items Table (Flex Grow to push footer down) -->
-                            <div style="flex: 1;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <thead>
-                                        <tr>
-                                            <th class="xl-header">Item</th>
-                                            <th class="xl-header">Desc</th>
-                                            <th class="xl-header">Cur</th>
-                                            <th class="xl-header col-amt">Amt</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${rows_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Footer Table (Pinned to bottom) -->
-                            <div style="border-top: 2px solid #e2e8f0;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${footer_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            ${diff_html ? `
-                            <!-- Spacer -->
-                            <div style="height: 40px;"></div> 
-                            
-                            <!-- Diff Table (Hidden on left side if desired, but we show diff logic on both or just one. 
-                                 Logic: if show_diff is true, show it visible. If false, show it invisible to reserve space.) 
-                            -->
-                            <div style="border-top: 1px dashed #fdba74; ${show_diff ? '' : 'visibility: hidden;'}">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${diff_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            ` : ''}
-                        </div>`;
+                        <div class="comp-body">
+                            <table class="comp-table">
+                                <tbody>${rows_html}</tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="comp-footer">
+                            ${footer_html}
+                        </div>
+                    </div>
+                `;
             };
 
-            let left = (view_mode !== 'Requested') ? buildColumnHTML(rows_std, res_std.totals, title_std, false) : "";
-            // Right side shows diff if we are in comparison mode
-            let right = (view_mode !== 'Standard') ? buildColumnHTML(rows_req, res_req.totals, title_req, view_mode === 'Comparison') : "";
+            let left = (view_mode !== 'Requested') ? buildCard('std', rows_std, res_std.totals, title_std, null) : "";
+            let right = (view_mode !== 'Standard') ? buildCard('req', rows_req, res_req.totals, title_req, res_std.totals) : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
                 container_html = `<div class="comparison-container">${left}${right}</div>`;
             } else {
-                container_html = `<div style="width:100%;">${left || right}</div>`;
+                container_html = `<div style="max-width: 600px; margin: 0 auto;">${left || right}</div>`;
             }
 
             return `<div class='xl-wrapper'>${cargo_html}${container_html}</div>`;
