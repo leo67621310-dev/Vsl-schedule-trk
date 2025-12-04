@@ -218,6 +218,7 @@
             const [loading, setLoading] = useState(true);
             const [isAdmin, setIsAdmin] = useState(false);
             const [user, setUser] = useState(null);
+            const [authErrorMsg, setAuthErrorMsg] = useState(null);
             
             // Tab & View State
             const [activeTab, setActiveTab] = useState('schedule'); 
@@ -241,35 +242,54 @@
             useEffect(() => {
                 const unsubscribe = window.onAuthStateChanged(window.auth, async (currentUser) => {
                     setUser(currentUser);
+                    setAuthErrorMsg(null);
+                    
                     if (currentUser) {
                         if (currentUser.isAnonymous) {
-                            // If anonymous, they are not admin
                             setIsAdmin(false);
                             setActiveTab('schedule');
                         } else {
-                            // If logged in via Google, check if admin
+                            // Check admin status with improved error handling & matching
                             try {
                                 const configRef = window.doc(window.db, 'config', 'admin');
                                 const configSnap = await window.getDoc(configRef);
+                                
                                 if (configSnap.exists()) {
                                     const allowed = configSnap.data().allowedEmails || [];
-                                    if (allowed.includes(currentUser.email)) {
+                                    const userEmailLower = currentUser.email.trim().toLowerCase();
+                                    // Normalize allowed list as well
+                                    const allowedLower = allowed.map(e => e.trim().toLowerCase());
+                                    
+                                    if (allowedLower.includes(userEmailLower)) {
                                         setIsAdmin(true);
-                                        setActiveTab('builder'); // Default to builder for admin
+                                        setActiveTab('builder');
                                     } else {
                                         setIsAdmin(false);
+                                        setAuthErrorMsg(`Email '${currentUser.email}' is not in the allowed list.`);
+                                        console.warn("Access Denied. User not in allowed list:", allowed);
                                     }
+                                } else {
+                                    setAuthErrorMsg("Config document missing in Firestore.");
+                                    console.error("Config document 'config/admin' does not exist.");
+                                    setIsAdmin(false);
                                 }
                             } catch (e) {
                                 console.error("Error checking admin status:", e);
+                                if (e.code === 'permission-denied') {
+                                    setAuthErrorMsg("Permission Denied: Update Firestore Rules to allow read access.");
+                                } else {
+                                    setAuthErrorMsg("Error checking permissions: " + e.message);
+                                }
                                 setIsAdmin(false);
                             }
                         }
                     } else {
-                        // No user, sign in anonymously to view public data
+                        // Attempt Anonymous Login for viewing public data
                         try {
                             await window.signInAnonymously(window.auth);
-                        } catch (e) { console.error("Anon auth failed", e); }
+                        } catch (e) { 
+                            console.error("Anon auth failed", e); 
+                        }
                         setIsAdmin(false);
                         setActiveTab('schedule');
                     }
@@ -280,7 +300,6 @@
 
             useEffect(() => {
                 if (window.db) {
-                    // Always try to load public data, regardless of user state (as long as auth initialized)
                     const unsub = window.onSnapshot(
                         window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'vessel_schedules'),
                         (snapshot) => {
@@ -304,9 +323,10 @@
 
             const handleLogout = async () => {
                 await window.signOut(window.auth);
-                // After sign out, re-sign in anonymously to allow viewing
+                // Re-sign in anonymously so user can still view schedule
                 await window.signInAnonymously(window.auth);
                 setIsAdmin(false);
+                setAuthErrorMsg(null);
                 setActiveTab('schedule');
             };
 
@@ -472,12 +492,16 @@
                                     {(user && !user.isAnonymous) ? (
                                         <div className="flex items-center gap-3">
                                             {isAdmin ? (
-                                                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded border border-emerald-800">
+                                                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded border border-emerald-800 cursor-help" title="You are logged in as Admin">
                                                     <Icons.CheckCircle size={12}/> Admin
                                                 </span>
                                             ) : (
-                                                <span className="flex items-center gap-2 text-xs font-semibold text-slate-400 bg-slate-800/50 px-2 py-1 rounded border border-slate-700">
-                                                    <Icons.User size={12}/> {user.email}
+                                                <span 
+                                                    className="flex items-center gap-2 text-xs font-semibold text-slate-400 bg-slate-800/50 px-2 py-1 rounded border border-slate-700 cursor-pointer hover:bg-slate-700" 
+                                                    onClick={() => alert(authErrorMsg || "You are logged in as Visitor. Add your email to the 'config/admin' collection in Firestore to gain write access.")}
+                                                    title="Click for details"
+                                                >
+                                                    <Icons.User size={12}/> Visitor
                                                 </span>
                                             )}
                                             <button onClick={handleLogout} className="text-xs text-rose-300 hover:text-rose-100 hover:underline">Sign Out</button>
