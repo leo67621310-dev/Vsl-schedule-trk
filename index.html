@@ -351,137 +351,93 @@
         }
 
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
-            let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
-            let meta = res_std.meta;
-            let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
+    const active_currencies = CURRENCIES.filter(c =>
+        (res_std.totals[c] || 0) > 0 || (res_req.totals[c] || 0) > 0
+    );
 
-            // PADDING LOGIC (Visual padding only, does not affect calculation)
-            let rows_std = [...res_std.rows];
-            let rows_req = [...res_req.rows];
+    const meta = res_std.meta;
+    const cargo_html = `<div class="xl-info-box">
+        <strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp;
+        CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp;
+        KGS: ${meta.kgs.toFixed(0)} &nbsp;|&nbsp;
+        PKGS: ${meta.pkgs}
+    </div>`;
 
-            // In Comparison mode, we need to ensure both sides have the SAME number of visual rows (Items + Pad)
-            // so that the Footer Table starts at the exact same Y-position.
-            if (view_mode === 'Comparison') {
-                let max_len = Math.max(rows_std.length, rows_req.length);
-                while (rows_std.length < max_len) rows_std.push({ is_pad: true });
-                while (rows_req.length < max_len) rows_req.push({ is_pad: true });
-            }
+    // Pad rows so both tables have the same height
+    if (view_mode === 'Comparison') {
+        const max = Math.max(res_std.rows.length, res_req.rows.length);
+        while (res_std.rows.length < max) res_std.rows.push({ is_pad: true });
+        while (res_req.rows.length < max) res_req.rows.push({ is_pad: true });
+    }
 
-            const buildColumnHTML = (rows, totals, title, show_diff) => {
-                // 1. Items Table Body
-                let rows_html = rows.map(r => {
-                    if (r.is_pad) return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
-                    return `<tr class="xl-row"><td class="col-item">${r.item}</td><td class="col-desc">${r.desc}</td><td class="col-curr">${r.curr}</td><td class="col-amt">${r.amount.toFixed(2)}</td></tr>`;
-                }).join('');
+    const buildTable = (rows, totals, title) => {
+        const rowsHTML = rows.map(r => {
+            if (r.is_pad) return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
+            return `<tr class="xl-row">
+                <td>${r.item}</td>
+                <td>${r.desc}</td>
+                <td>${r.curr}</td>
+                <td class="col-amt">${r.amount.toFixed(2)}</td>
+            </tr>`;
+        }).join('');
 
-                if (!rows_html) rows_html = `<tr class="xl-row"><td colspan="4" style="text-align:center; padding:20px; color:#cbd5e1;">No charges</td></tr>`;
+        // Footer with TOTAL + DIFF per currency – fully side-by-side
+        let footer = '';
+        active_currencies.forEach(curr => {
+            const total_std = (res_std.totals[curr] || 0).toFixed(2);
+            const total_req = (res_req.totals[curr] || 0).toFixed(2);
+            const diff = (res_std.totals[curr] || 0) - (res_req.totals[curr] || 0);
+            const sign = diff >= 0 ? '+' : '';
+            const diffColor = diff >= 0 ? '#b45309' : '#059669';
+            const diffBg = diff >= 0 ? '#fff7ed' : '#ecfdf5';
 
-                // 2. Footer Table Body (Totals)
-                let footer_html = "";
-                if (active_currencies.length > 0) {
-                    active_currencies.forEach(c => {
-                        let val = totals[c] || 0;
-                        // Show if >0 OR if we are in comparison mode (to maintain alignment with other side)
-                        if (val > 0 || show_diff) { 
-                             footer_html += `
-                                <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                                    <td colspan="2"></td>
-                                    <td class="col-curr" style="color: #64748b;">TOTAL ${c}</td>
-                                    <td class="col-amt" style="color: #0f172a;">${val.toFixed(2)}</td>
-                                </tr>`;
-                        }
-                    });
-                } else {
-                     footer_html += `
-                        <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
-                            <td colspan="2"></td>
-                            <td class="col-curr" style="color: #64748b;">TOTAL</td>
-                            <td class="col-amt" style="color: #0f172a;">0.00</td>
-                        </tr>`;
-                }
+            footer += `
+                <!-- TOTAL line -->
+                <tr class="footer-section totals">
+                    <td colspan="2"></td>
+                    <td class="font-bold text-slate-900">TOTAL ${curr}</td>
+                    <td class="col-amt font-bold text-slate-900">
+                        ${view_mode === 'Comparison' ? total_std : total_req}
+                    </td>
+                </tr>
+                <!-- DIFF line (only in comparison mode) -->
+                ${view_mode === 'Comparison' ? `
+                <tr class="footer-section diffs" style="background:${diffBg};">
+                    <td colspan="2"></td>
+                    <td class="font-bold" style="color:${diffColor};">DIFF ${curr}</td>
+                    <td class="col-amt font-bold" style="color:${diffColor};">${sign}${diff.toFixed(2)}</td>
+                </tr>` : ''}
+            `;
+        });
 
-                // 3. Diff Table Body (Difference) - SEPARATE TABLE or SPACER ROW
-                let diff_html = "";
-                if (show_diff) {
-                    active_currencies.forEach(c => {
-                        let diff = (res_std.totals[c] || 0) - (res_req.totals[c] || 0);
-                        let sign = diff >= 0 ? "+" : "";
-                        let color = diff >= 0 ? "#b45309" : "#059669"; 
-                        let bg = diff >= 0 ? "#fff7ed" : "#ecfdf5";
-                        
-                        diff_html += `
-                            <tr class="xl-row" style="background-color: ${bg}; border-top: 1px dashed ${color}; font-weight: 700; color: ${color};">
-                                <td colspan="2"></td>
-                                <td class="col-curr">DIFF ${c}</td>
-                                <td class="col-amt">${sign}${diff.toFixed(2)}</td>
-                            </tr>`;
-                    });
-                }
+        return `<div class="comparison-col">
+            <div class="table-title">${title}</div>
+            <table class="xl-table">
+                <thead>
+                    <tr>
+                        <th class="xl-header">Item</th>
+                        <th class="xl-header">Desc</th>
+                        <th class="xl-header">Cur</th>
+                        <th class="xl-header col-amt">Amt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHTML}
+                    ${footer}
+                </tbody>
+            </table>
+        </div>`;
+    };
 
-                // Use fixed col widths to ensure alignment across separate tables
-                const colGroup = `<colgroup><col style="width:20%"><col style="width:50%"><col style="width:15%"><col style="width:15%"></colgroup>`;
+    const left  = view_mode !== 'Requested' ? buildTable(res_std.rows, res_std.totals, title_std) : '';
+    const right = view_mode !== 'Standard'   ? buildTable(res_req.rows, res_req.totals, title_req) : '';
 
-                return `<div class="comparison-col">
-                            <div class="table-title">${title}</div>
-                            
-                            <!-- Items Table (Flex Grow to push footer down) -->
-                            <div style="flex: 1;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <thead>
-                                        <tr>
-                                            <th class="xl-header">Item</th>
-                                            <th class="xl-header">Desc</th>
-                                            <th class="xl-header">Cur</th>
-                                            <th class="xl-header col-amt">Amt</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${rows_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Footer Table (Pinned to bottom) -->
-                            <div style="border-top: 2px solid #e2e8f0;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${footer_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            ${diff_html ? `
-                            <!-- Spacer -->
-                            <div style="height: 40px;"></div> 
-                            
-                            <!-- Diff Table -->
-                            <div style="border-top: 1px dashed #fdba74;">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${diff_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            ` : ''}
-                        </div>`;
-            };
+    const container = view_mode === 'Comparison'
+        ? `<div class="comparison-container">${left}${right}</div>`
+        : `<div class="max-w-3xl mx-auto">${left || right}</div>`;
 
-            let left = (view_mode !== 'Requested') ? buildColumnHTML(rows_std, res_std.totals, title_std, false) : "";
-            let right = (view_mode !== 'Standard') ? buildColumnHTML(rows_req, res_req.totals, title_req, view_mode === 'Comparison') : "";
-
-            let container_html = "";
-            if (view_mode === 'Comparison') {
-                container_html = `<div class="comparison-container">${left}${right}</div>`;
-            } else {
-                container_html = `<div style="width:100%;">${left || right}</div>`;
-            }
-
-            return `<div class='xl-wrapper'>${cargo_html}${container_html}</div>`;
-        }
-
+    return `<div class="xl-wrapper">${cargo_html}${container}</div>`;
+}
         // --- CALCULATOR COMPONENT ---
         const DestCalcTool = () => {
             const [globals, setGlobals] = useState({ ref: '', cbm: 3.0, kgs: 250, pkgs: 3, viewMode: 'Comparison' });
@@ -999,3 +955,4 @@
     </script>
 </body>
 </html>
+
