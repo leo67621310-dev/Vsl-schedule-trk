@@ -19,7 +19,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
         textarea, pre, code { font-family: 'JetBrains Mono', monospace; }
         
         /* Custom scrollbar */
@@ -33,25 +33,28 @@
         
         /* Calculator Specific Styles */
         .calc-input { font-variant-numeric: slashed-zero tabular-nums; }
-        .calc-section { transition: all 0.2s; }
-        .calc-section:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         
         /* Report Styles for InnerHTML */
         .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .xl-header { background: #f1f5f9; color: #64748b; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; }
-        .xl-row td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-        .xl-row:nth-child(even) { background-color: #fafafa; }
-        .col-amt { text-align: right; font-weight: 600; font-family: 'Inter', sans-serif; font-variant-numeric: slashed-zero tabular-nums; }
-        .min-highlight { font-weight: 800; color: #0f172a; font-size: 11px; }
-        .calc-subtext { display: block; font-size: 11px; color: #64748b; margin-top: 3px; }
+        .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+        .xl-row td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; }
+        .xl-row:nth-child(even) { background-color: #fcfcfc; }
+        .col-amt { text-align: right; font-weight: 600; font-family: 'Inter', sans-serif; font-variant-numeric: slashed-zero tabular-nums; color: #0f172a; }
+        .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
+        .calc-subtext { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
         .footer-section { padding: 12px 16px; }
-        .footer-section.totals { background: #f8fafc; }
-        .footer-section.diffs { background: #fff; border-top: 1px dashed #e2e8f0; color: #b45309; }
+        .footer-section.totals { background: #f8fafc; border-top: 1px solid #e2e8f0; }
+        .footer-section.diffs { background: #fff7ed; border-top: 1px dashed #fdba74; color: #b45309; }
         .stat-line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
         .stat-val { font-weight: 700; font-variant-numeric: slashed-zero tabular-nums; }
-        .comparison-container { display: flex; gap: 20px; }
-        .comparison-col { flex: 1; display: flex; flex-direction: column; }
+        .comparison-container { display: flex; gap: 24px; }
+        .comparison-col { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+        .table-title { padding: 12px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
+        
         @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
+
+        /* Input focus rings */
+        input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
     </style>
 </head>
 <body class="text-slate-800 antialiased">
@@ -133,13 +136,15 @@
             Google: (props) => <IconWrapper {...props}><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2c2.4 0 4.6 0.9 6.3 2.4l-3 2.9C14.2 6.6 13.2 6 12 6c-3.3 0-6 2.7-6 6s2.7 6 6 6c2.9 0 5.3-2 5.9-4.8H12V10.2h10c0.1 0.6 0.2 1.2 0.2 1.8 0 5.6-4.6 10-10.2 10z"/></IconWrapper>,
             User: (props) => <IconWrapper {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconWrapper>,
             Calculator: (props) => <IconWrapper {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></IconWrapper>,
+            Save: (props) => <IconWrapper {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconWrapper>,
+            Download: (props) => <IconWrapper {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconWrapper>,
         };
 
         // --- SHARED COMPONENTS ---
         const InputField = ({ label, name, type = "text", placeholder, value, onChange, required = false, className = "" }) => (
             <div className={`flex flex-col ${className}`}>
                 <label className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">{label}</label>
-                <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-slate-800 text-sm transition-all" />
+                <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800 text-sm transition-all shadow-sm" />
             </div>
         );
 
@@ -187,7 +192,7 @@
                 <div className={`flex flex-col ${className}`}>
                     <label className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide flex justify-between">{label}{error && <span className="text-rose-500 normal-case text-[10px] font-medium animate-pulse">Invalid</span>}</label>
                     <div className="relative group">
-                        <input type="text" name={name} value={displayValue} onChange={(e) => setDisplayValue(e.target.value)} onBlur={() => parseAndSubmit(displayValue)} onKeyDown={(e) => e.key === 'Enter' && parseAndSubmit(displayValue)} placeholder={placeholder} required={required} className={`w-full px-3 py-2 bg-slate-50 border rounded-lg focus:outline-none focus:ring-2 focus:bg-white text-slate-800 text-sm transition-all ${error ? 'border-rose-300 ring-rose-100 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500 group-hover:border-slate-300'}`} />
+                        <input type="text" name={name} value={displayValue} onChange={(e) => setDisplayValue(e.target.value)} onBlur={() => parseAndSubmit(displayValue)} onKeyDown={(e) => e.key === 'Enter' && parseAndSubmit(displayValue)} placeholder={placeholder} required={required} className={`w-full px-3 py-2 bg-white border rounded-lg focus:outline-none focus:ring-2 focus:bg-white text-slate-800 text-sm transition-all shadow-sm ${error ? 'border-rose-300 ring-rose-100 focus:ring-rose-200' : 'border-slate-200 focus:ring-blue-500 focus:border-blue-500'}`} />
                         <div className="absolute right-3 top-2.5 pointer-events-none text-slate-400 group-hover:text-blue-500 transition-colors"><Icons.Calendar size={14} /></div>
                     </div>
                 </div>
@@ -214,7 +219,7 @@
                 const currentDayStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth()+1).padStart(2,'0')}-${String(dayDate.getDate()).padStart(2,'0')}`;
                 const dayEvents = events.filter(e => e.date === currentDayStr);
                 days.push(
-                    <div key={d} className="h-24 border-r border-b border-slate-100 p-1 relative hover:bg-slate-50 transition-colors group">
+                    <div key={d} className="h-24 border-r border-b border-slate-100 p-1 relative hover:bg-slate-50 transition-colors group bg-white">
                         <span className={`text-xs font-semibold p-1.5 rounded-full inline-block w-6 h-6 text-center leading-3 ${dayEvents.length > 0 ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400'}`}>{d}</span>
                         <div className="flex flex-col gap-1 mt-1">{dayEvents.map((ev, idx) => <div key={idx} className={`text-[10px] px-1.5 py-0.5 rounded border ${ev.color} font-bold shadow-sm truncate`}>{ev.type}</div>)}</div>
                     </div>
@@ -370,8 +375,8 @@
                     diffs_html += `</div>`;
                 }
 
-                return `<div class="table-title" style="font-weight:700;margin-bottom:5px;color:#0f172a;">${title}</div>
-                        <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:20px;">
+                return `<div class="table-title">${title}</div>
+                        <div class="comparison-col">
                             <table class="xl-table"><thead><tr><th class="xl-header">Item</th><th class="xl-header">Desc</th><th class="xl-header">Cur</th><th class="xl-header col-amt">Amt</th></tr></thead><tbody>${rows_html}</tbody></table>
                             ${totals_html}${diffs_html}
                         </div>`;
@@ -380,7 +385,7 @@
             let left = (view_mode !== 'Requested') ? buildTable(res_std.rows, res_std.totals, title_std, false) : "";
             let right = (view_mode !== 'Standard') ? buildTable(res_req.rows, res_req.totals, title_req, view_mode === 'Comparison') : "";
 
-            if (view_mode === 'Comparison') return `<div class="comparison-container"><div class="comparison-col">${left}</div><div class="comparison-col">${right}</div></div>`;
+            if (view_mode === 'Comparison') return `<div class="comparison-container">${left}${right}</div>`;
             return `<div style="width:100%;">${left || right}</div>`;
         }
 
@@ -389,11 +394,12 @@
             const [globals, setGlobals] = useState({ ref: '', cbm: 3.0, kgs: 250, pkgs: 3, viewMode: 'Comparison' });
             const [stdData, setStdData] = useState({ sections: [], items: [], title: 'Standard' });
             const [reqData, setReqData] = useState({ sections: [], items: [], title: 'Requested' });
+            const [mgrData, setMgrData] = useState({ sections: [], items: [], title: '' }); // MANAGER DATA
             const [presets, setPresets] = useState(DEFAULT_PRESETS);
             const [history, setHistory] = useState([]);
             const [activeSubTab, setActiveSubTab] = useState('std');
             const [htmlOutput, setHtmlOutput] = useState('');
-            const [selectedPreset, setSelectedPreset] = useState('Create New...');
+            const [selectedPresetName, setSelectedPresetName] = useState('Create New...');
 
             useEffect(() => {
                 const saved = localStorage.getItem('dest_calc_v1');
@@ -419,52 +425,108 @@
                 setHtmlOutput(generateReportHTML(resStd, resReq, globals.viewMode, stdData.title, reqData.title));
             }, [globals, stdData, reqData, presets, history]);
 
+            // Helper to pick which data object to modify based on active tab
+            const getTargetData = (target) => (target === 'std' ? stdData : target === 'req' ? reqData : mgrData);
+            const setTargetData = (target, newData) => {
+                if (target === 'std') setStdData(newData);
+                else if (target === 'req') setReqData(newData);
+                else setMgrData(newData);
+            };
+
             const updateSection = (target, idx, field, val) => {
-                const setter = target === 'std' ? setStdData : setReqData;
-                setter(prev => {
-                    const newData = { ...prev, sections: [...prev.sections] };
-                    newData.sections[idx] = { ...newData.sections[idx], data: { ...newData.sections[idx].data, [field]: parseFloat(val) || val } };
-                    return newData;
-                });
+                const prev = getTargetData(target);
+                const newData = { ...prev, sections: [...prev.sections] };
+                newData.sections[idx] = { ...newData.sections[idx], data: { ...newData.sections[idx].data, [field]: parseFloat(val) || val } };
+                setTargetData(target, newData);
             };
 
             const addSection = (target, type) => {
-                const setter = target === 'std' ? setStdData : setReqData;
+                const prev = getTargetData(target);
                 const newSec = { type, data: { curr: 'EUR', rt: 0, ton: 0, min: 0, heavy: 0, light: 0, high: 0, rate: 0, min_days: 0, days: 0, unit: 'RT' } };
-                setter(prev => ({ ...prev, sections: [...prev.sections, newSec] }));
+                setTargetData(target, { ...prev, sections: [...prev.sections, newSec] });
             };
 
             const removeSection = (target, idx) => {
-                const setter = target === 'std' ? setStdData : setReqData;
-                setter(prev => ({ ...prev, sections: prev.sections.filter((_, i) => i !== idx) }));
+                const prev = getTargetData(target);
+                setTargetData(target, { ...prev, sections: prev.sections.filter((_, i) => i !== idx) });
             };
 
             const updateItem = (target, idx, field, val) => {
-                const setter = target === 'std' ? setStdData : setReqData;
-                setter(prev => {
-                    const newItems = [...prev.items];
-                    newItems[idx] = { ...newItems[idx], [field]: (field === 'price' || field === 'min_val') ? parseFloat(val) : val };
-                    return { ...prev, items: newItems };
-                });
+                const prev = getTargetData(target);
+                const newItems = [...prev.items];
+                newItems[idx] = { ...newItems[idx], [field]: (field === 'price' || field === 'min_val') ? parseFloat(val) : val };
+                setTargetData(target, { ...prev, items: newItems });
             };
 
             const addItem = (target) => {
-                const setter = target === 'std' ? setStdData : setReqData;
-                setter(prev => ({ ...prev, items: [...prev.items, { name: '', price: 0, unit: 'FLAT', curr: 'EUR', min_type: 'None', min_val: 0 }] }));
+                const prev = getTargetData(target);
+                setTargetData(target, { ...prev, items: [...prev.items, { name: '', price: 0, unit: 'FLAT', curr: 'EUR', min_type: 'None', min_val: 0 }] });
             };
 
             const removeItem = (target, idx) => {
-                const setter = target === 'std' ? setStdData : setReqData;
-                setter(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
+                const prev = getTargetData(target);
+                setTargetData(target, { ...prev, items: prev.items.filter((_, i) => i !== idx) });
             };
 
             const loadPreset = (target, presetName) => {
                 if(presets[presetName]) {
                     const copy = JSON.parse(JSON.stringify(presets[presetName]));
-                    if(target === 'std') setStdData(copy);
-                    else setReqData(copy);
+                    setTargetData(target, copy);
                 }
             };
+
+            // --- Manager Specific Handlers ---
+            const handleMgrSelect = (val) => {
+                setSelectedPresetName(val);
+                if (val === 'Create New...') {
+                    setMgrData({ sections: [], items: [], title: '' });
+                } else if (presets[val]) {
+                    setMgrData(JSON.parse(JSON.stringify(presets[val])));
+                }
+            };
+
+            const handleSavePreset = () => {
+                const name = mgrData.title.trim();
+                if(!name) return alert("Please enter a Preset Name (Section Title).");
+                setPresets(prev => ({ ...prev, [name]: mgrData }));
+                setSelectedPresetName(name);
+                alert(`Preset "${name}" saved.`);
+            };
+
+            const handleDeletePreset = () => {
+                if(selectedPresetName === 'Create New...' || !presets[selectedPresetName]) return;
+                if(!confirm(`Delete preset "${selectedPresetName}"?`)) return;
+                const newPresets = { ...presets };
+                delete newPresets[selectedPresetName];
+                setPresets(newPresets);
+                handleMgrSelect('Create New...');
+            };
+            
+             const handleImportJSON = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const imported = JSON.parse(evt.target.result);
+                        setPresets(prev => ({ ...prev, ...imported }));
+                        alert("Presets imported successfully.");
+                    } catch (err) { alert("Invalid JSON file."); }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // Reset
+            };
+
+            const handleExportJSON = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presets, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "dest_calc_presets.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            };
+
 
             const saveSnapshot = () => {
                 const resStd = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), stdData.sections, stdData.items);
@@ -485,13 +547,40 @@
 
             const renderInputs = (target, data) => (
                 <div className="space-y-4">
-                    <div className="flex gap-4 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <input className="font-bold bg-transparent outline-none w-full" value={data.title} onChange={e => target === 'std' ? setStdData({...stdData, title: e.target.value}) : setReqData({...reqData, title: e.target.value})} placeholder="Section Title" />
-                        <select onChange={(e) => loadPreset(target, e.target.value)} className="text-xs border rounded p-1">
-                            <option>Load Preset...</option>
-                            {Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}
-                        </select>
-                    </div>
+                    {/* Header & Preset Loader (Only show preset loader for std/req tabs, not mgr) */}
+                    {target !== 'mgr' && (
+                        <div className="flex gap-4 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <input className="font-bold bg-transparent outline-none w-full" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} placeholder="Section Title" />
+                            <select onChange={(e) => loadPreset(target, e.target.value)} className="text-xs border rounded p-1">
+                                <option>Load Preset...</option>
+                                {Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    
+                    {/* Manager Specific Header */}
+                    {target === 'mgr' && (
+                         <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-4 space-y-3">
+                            <div className="flex gap-4 items-center">
+                                <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Select Preset to Edit</label>
+                                    <select value={selectedPresetName} onChange={e => handleMgrSelect(e.target.value)} className="w-full text-sm border rounded p-1.5">
+                                        <option>Create New...</option>
+                                        {Object.keys(presets).map(k => <option key={k} value={k}>{k}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-amber-700 uppercase mb-1">Preset Name</label>
+                                    <input className="w-full text-sm border rounded p-1.5 font-bold" value={data.title} onChange={e => setTargetData(target, {...data, title: e.target.value})} placeholder="e.g. CLIENT A - STANDARD" />
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={handleSavePreset} className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-emerald-700 flex items-center gap-1"><Icons.Save size={14}/> Save Preset</button>
+                                <button onClick={handleDeletePreset} className="bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-rose-700 flex items-center gap-1"><Icons.Trash2 size={14}/> Delete</button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Complex Sections */}
                     {data.sections.map((sec, idx) => (
                         <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg flex flex-wrap gap-2 items-end relative shadow-sm hover:shadow-md transition-shadow">
@@ -525,16 +614,38 @@
                     <div className="mt-4">
                         <div className="text-[10px] font-bold text-slate-400 uppercase mb-2">Extra Items</div>
                         {data.items.map((item, idx) => (
-                            <div key={idx} className="flex gap-1 mb-1 items-center">
-                                <input className="text-xs border rounded p-1 flex-grow" placeholder="Item Name" value={item.name} onChange={e => updateItem(target, idx, 'name', e.target.value)} />
+                            <div key={idx} className="flex gap-1 mb-1 items-center flex-wrap sm:flex-nowrap">
+                                <input className="text-xs border rounded p-1 w-full sm:w-auto sm:flex-grow" placeholder="Item Name" value={item.name} onChange={e => updateItem(target, idx, 'name', e.target.value)} />
                                 <select className="text-xs border rounded p-1 w-14" value={item.curr} onChange={e => updateItem(target, idx, 'curr', e.target.value)}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
                                 <input className="text-xs border rounded p-1 w-16" type="number" placeholder="Price" value={item.price} onChange={e => updateItem(target, idx, 'price', e.target.value)} />
                                 <select className="text-xs border rounded p-1 w-16" value={item.unit} onChange={e => updateItem(target, idx, 'unit', e.target.value)}>{['RT','BL','FLAT','PKG'].map(u => <option key={u}>{u}</option>)}</select>
+                                
+                                {/* RESTORED MINIMUM FIELDS */}
+                                <select className="text-xs border rounded p-1 w-16" value={item.min_type || 'None'} onChange={e => updateItem(target, idx, 'min_type', e.target.value)}>
+                                    <option value="None">-</option>
+                                    <option value="Amt">Amt</option>
+                                    <option value="Unit">Unit</option>
+                                </select>
+                                <input className="text-xs border rounded p-1 w-14" type="number" placeholder="Min" value={item.min_val || 0} onChange={e => updateItem(target, idx, 'min_val', e.target.value)} />
+
                                 <button onClick={() => removeItem(target, idx)} className="text-rose-400 hover:text-rose-600"><Icons.Trash2 size={14} /></button>
                             </div>
                         ))}
                         <button onClick={() => addItem(target)} className="text-xs text-blue-600 hover:underline mt-1">+ Add Item</button>
                     </div>
+
+                    {target === 'mgr' && (
+                        <div className="mt-6 pt-6 border-t border-slate-200">
+                             <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Advanced Tools</h4>
+                             <div className="flex gap-2">
+                                 <button onClick={handleExportJSON} className="bg-slate-100 border border-slate-300 text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-200 flex items-center gap-1"><Icons.Download size={14}/> Export JSON</button>
+                                 <label className="bg-slate-100 border border-slate-300 text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-200 flex items-center gap-1 cursor-pointer">
+                                     <Icons.Plus size={14}/> Import JSON
+                                     <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+                                 </label>
+                             </div>
+                        </div>
+                    )}
                 </div>
             );
 
@@ -552,28 +663,32 @@
                         </div>
 
                         {/* Editor Tabs */}
-                        <div className="flex gap-2 mb-4 border-b border-slate-200 pb-2">
-                            <button onClick={() => setActiveSubTab('std')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeSubTab==='std' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Standard (Left)</button>
-                            <button onClick={() => setActiveSubTab('req')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${activeSubTab==='req' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Requested (Right)</button>
+                        <div className="flex gap-2 mb-4 border-b border-slate-200 pb-2 overflow-x-auto">
+                            <button onClick={() => setActiveSubTab('std')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='std' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Standard</button>
+                            <button onClick={() => setActiveSubTab('req')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='req' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>Requested</button>
+                            <button onClick={() => setActiveSubTab('mgr')} className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors whitespace-nowrap ${activeSubTab==='mgr' ? 'bg-amber-600 text-white shadow-sm' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}>Manage Presets</button>
                         </div>
 
                         {/* Editor Content */}
                         <div className="mb-8">
                             {activeSubTab === 'std' && renderInputs('std', stdData)}
                             {activeSubTab === 'req' && renderInputs('req', reqData)}
+                            {activeSubTab === 'mgr' && renderInputs('mgr', mgrData)}
                         </div>
 
-                        {/* Output Controls */}
-                        <div className="flex justify-between items-center border-t border-slate-200 pt-4 mb-4">
-                            <select value={globals.viewMode} onChange={e => setGlobals({...globals, viewMode: e.target.value})} className="text-sm font-bold border rounded p-2">
-                                <option value="Comparison">Comparison View</option>
-                                <option value="Standard">Standard Only</option>
-                                <option value="Requested">Requested Only</option>
-                            </select>
-                        </div>
-
-                        {/* Output HTML */}
-                        <div className="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[300px]" dangerouslySetInnerHTML={{__html: htmlOutput}}></div>
+                        {/* Output Controls (Hide in Manager Mode) */}
+                        {activeSubTab !== 'mgr' && (
+                            <>
+                                <div className="flex justify-between items-center border-t border-slate-200 pt-4 mb-4">
+                                    <select value={globals.viewMode} onChange={e => setGlobals({...globals, viewMode: e.target.value})} className="text-sm font-bold border rounded p-2">
+                                        <option value="Comparison">Comparison View</option>
+                                        <option value="Standard">Standard Only</option>
+                                        <option value="Requested">Requested Only</option>
+                                    </select>
+                                </div>
+                                <div className="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[300px]" dangerouslySetInnerHTML={{__html: htmlOutput}}></div>
+                            </>
+                        )}
                     </div>
 
                     {/* History Sidebar */}
