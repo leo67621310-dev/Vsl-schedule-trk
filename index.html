@@ -40,7 +40,7 @@
         .xl-wrapper { margin-top: 10px; }
         .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; }
         .xl-info-box strong { color: #0f172a; }
-        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+        .xl-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; height: 100%; }
         .xl-header { background: #f8fafc; color: #64748b; font-weight: 600; text-align: left; padding: 12px 8px; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
         .xl-row td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: #334155; overflow-wrap: break-word; }
         .xl-row:nth-child(even) { background-color: #fcfcfc; }
@@ -48,14 +48,17 @@
         .min-highlight { font-weight: 700; color: #0ea5e9; font-size: 10px; background: #e0f2fe; padding: 1px 4px; border-radius: 4px; margin-left: 4px; }
         .calc-subtext { display: block; font-size: 11px; color: #94a3b8; margin-top: 2px; }
         
-        /* NEW FLEX LAYOUT CLASSES */
-        .tables-wrapper { display: flex; gap: 24px; align-items: stretch; }
-        .table-container { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); min-height: 400px; }
+        /* FLEXBOX REPORT LAYOUT */
+        .comparison-container { display: flex; gap: 24px; align-items: stretch; }
+        .comparison-col { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
         .table-title { padding: 12px 16px; background: #fff; font-weight: 700; font-size: 14px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
-        .table-content { flex-grow: 1; } /* This pushes the footer down */
-        .total-section { margin-top: auto; border-top: 2px solid #e2e8f0; } /* Sticky bottom effect */
+        
+        /* Force footer to bottom */
+        .table-body-wrapper { flex-grow: 1; display: flex; flex-direction: column; }
+        .items-table-container { flex-grow: 1; }
+        .footer-table-container { margin-top: auto; border-top: 2px solid #e2e8f0; }
 
-        @media (max-width: 768px) { .tables-wrapper { flex-direction: column; } }
+        @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
 
         /* Input focus rings */
         input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
@@ -355,8 +358,6 @@
 
         function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
             let active_currencies = CURRENCIES.filter(c => res_std.totals[c] > 0 || res_req.totals[c] > 0);
-            
-            // Add header with cargo details
             let meta = res_std.meta;
             let cargo_html = `<div class="xl-info-box"><strong>SHIPMENT DETAILS:</strong>&nbsp;&nbsp; CBM: ${meta.cbm.toFixed(3)} &nbsp;|&nbsp; KGS: ${meta.kgs.toFixed(3)} &nbsp;|&nbsp; PKGS: ${meta.pkgs}</div>`;
 
@@ -374,8 +375,7 @@
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        // Show if >0 OR if we are in comparison mode (to maintain alignment with other side)
-                        if (val > 0 || show_diff) { 
+                        if(totals[c] > 0 || show_diff) { 
                              footer_html += `
                                 <tr class="xl-row" style="background-color: #f8fafc; font-weight: 700;">
                                     <td></td><td></td>
@@ -411,43 +411,46 @@
                     });
                 }
 
-                // Use fixed col widths to ensure alignment across separate tables
+                // Use fixed col widths
                 const colGroup = `<colgroup><col style="width:20%"><col style="width:50%"><col style="width:15%"><col style="width:15%"></colgroup>`;
 
-                return `<div class="table-container">
+                return `<div class="comparison-col">
                             <div class="table-title">${title}</div>
                             
-                            <!-- Items Table (Flex Grow to push footer down) -->
-                            <div class="table-content">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <thead>
-                                        <tr>
-                                            <th class="xl-header">Item</th>
-                                            <th class="xl-header">Desc</th>
-                                            <th class="xl-header">Cur</th>
-                                            <th class="xl-header col-amt">Amt</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${rows_html}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Footer Table (Pinned to bottom) -->
-                            <div class="total-section">
-                                <table class="xl-table">
-                                    ${colGroup}
-                                    <tbody>
-                                        ${footer_html}
-                                    </tbody>
-                                </table>
+                            <!-- Main wrapper for flex grow behavior -->
+                            <div class="table-body-wrapper">
+                                <!-- Items Table (Flex Grow to push footer down) -->
+                                <div class="items-table-container">
+                                    <table class="xl-table">
+                                        ${colGroup}
+                                        <thead>
+                                            <tr>
+                                                <th class="xl-header">Item</th>
+                                                <th class="xl-header">Desc</th>
+                                                <th class="xl-header">Cur</th>
+                                                <th class="xl-header col-amt">Amt</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${rows_html}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Footer Table (Pinned to bottom) -->
+                                <div class="footer-table-container">
+                                    <table class="xl-table">
+                                        ${colGroup}
+                                        <tbody>
+                                            ${footer_html}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             
                             ${diff_html ? `
                             <!-- Spacer -->
-                            <div style="height: 20px;"></div>
+                            <div style="height: 40px;"></div> 
                             
                             <!-- Diff Table -->
                             <div style="border-top: 1px dashed #fdba74;">
@@ -467,7 +470,7 @@
 
             let container_html = "";
             if (view_mode === 'Comparison') {
-                container_html = `<div class="tables-wrapper">${left}${right}</div>`;
+                container_html = `<div class="comparison-container">${left}${right}</div>`;
             } else {
                 container_html = `<div style="width:100%;">${left || right}</div>`;
             }
