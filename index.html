@@ -350,7 +350,7 @@
             return { rows: rows, totals: totals, meta: {cbm, kgs, pkgs} };
         }
 
-        function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
+function generateReportHTML(res_std, res_req, view_mode, title_std, title_req) {
     const active_currencies = CURRENCIES.filter(c =>
         (res_std.totals[c] || 0) > 0 || (res_req.totals[c] || 0) > 0
     );
@@ -363,14 +363,14 @@
         PKGS: ${meta.pkgs}
     </div>`;
 
-    // Pad rows so both tables have the same height
+    // Pad rows so tables have identical height
     if (view_mode === 'Comparison') {
         const max = Math.max(res_std.rows.length, res_req.rows.length);
         while (res_std.rows.length < max) res_std.rows.push({ is_pad: true });
         while (res_req.rows.length < max) res_req.rows.push({ is_pad: true });
     }
 
-    const buildTable = (rows, totals, title) => {
+    const buildTable = (rows, title) => {
         const rowsHTML = rows.map(r => {
             if (r.is_pad) return `<tr class="xl-row"><td colspan="4">&nbsp;</td></tr>`;
             return `<tr class="xl-row">
@@ -380,35 +380,6 @@
                 <td class="col-amt">${r.amount.toFixed(2)}</td>
             </tr>`;
         }).join('');
-
-        // Footer with TOTAL + DIFF per currency – fully side-by-side
-        let footer = '';
-        active_currencies.forEach(curr => {
-            const total_std = (res_std.totals[curr] || 0).toFixed(2);
-            const total_req = (res_req.totals[curr] || 0).toFixed(2);
-            const diff = (res_std.totals[curr] || 0) - (res_req.totals[curr] || 0);
-            const sign = diff >= 0 ? '+' : '';
-            const diffColor = diff >= 0 ? '#b45309' : '#059669';
-            const diffBg = diff >= 0 ? '#fff7ed' : '#ecfdf5';
-
-            footer += `
-                <!-- TOTAL line -->
-                <tr class="footer-section totals">
-                    <td colspan="2"></td>
-                    <td class="font-bold text-slate-900">TOTAL ${curr}</td>
-                    <td class="col-amt font-bold text-slate-900">
-                        ${view_mode === 'Comparison' ? total_std : total_req}
-                    </td>
-                </tr>
-                <!-- DIFF line (only in comparison mode) -->
-                ${view_mode === 'Comparison' ? `
-                <tr class="footer-section diffs" style="background:${diffBg};">
-                    <td colspan="2"></td>
-                    <td class="font-bold" style="color:${diffColor};">DIFF ${curr}</td>
-                    <td class="col-amt font-bold" style="color:${diffColor};">${sign}${diff.toFixed(2)}</td>
-                </tr>` : ''}
-            `;
-        });
 
         return `<div class="comparison-col">
             <div class="table-title">${title}</div>
@@ -421,20 +392,60 @@
                         <th class="xl-header col-amt">Amt</th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${rowsHTML}
-                    ${footer}
-                </tbody>
+                <tbody>${rowsHTML}</tbody>
             </table>
         </div>`;
     };
 
-    const left  = view_mode !== 'Requested' ? buildTable(res_std.rows, res_std.totals, title_std) : '';
-    const right = view_mode !== 'Standard'   ? buildTable(res_req.rows, res_req.totals, title_req) : '';
+    const left  = view_mode !== 'Requested' ? buildTable(res_std.rows, title_std) : '';
+    const right = view_mode !== 'Standard'   ? buildTable(res_req.rows, title_req) : '';
+
+    // ───────────────────────────────
+    //  NEW: Shared synchronized footer
+    // ───────────────────────────────
+    let sharedFooter = '';
+    if (view_mode === 'Comparison') {
+        active_currencies.forEach(curr => {
+            const total_std = (res_std.totals[curr] || 0).toFixed(2);
+            const total_req = (res_req.totals[curr] || 0).toFixed(2);
+            const diff = (res_std.totals[curr] || 0) - (res_req.totals[curr] || 0);
+            const sign = diff >= 0 ? '+' : '';
+            const diffColor = diff >= 0 ? '#b45309' : '#059669';
+            const diffBg = diff >= 0 ? '#fff7ed' : '#ecfdf5';
+
+            sharedFooter += `
+                <div class="comparison-container -mt-px">
+                    <div class="comparison-col">
+                        <div class="footer-section totals">
+                            <div class="stat-line"><span>TOTAL ${curr}</span><span class="stat-val">${total_std}</span></div>
+                        </div>
+                        <div class="footer-section diffs" style="background:${diffBg}; color:${diffColor};">
+                            <div class="stat-line"><span>DIFF ${curr}</span><span class="stat-val">${sign}${diff.toFixed(2)}</span></div>
+                        </div>
+                    </div>
+                    <div class="comparison-col">
+                        <div class="footer-section totals">
+                            <div class="stat-line"><span>TOTAL ${curr}</span><span class="stat-val">${total_req}</span></div>
+                        </div>
+                        <div class="footer-section diffs" style="background:${diffBg}; color:${diffColor};">
+                            <div class="stat-line"><span>DIFF ${curr}</span><span class="stat-val">${sign}${diff.toFixed(2)}</span></div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    } else {
+        // Single column mode
+        active_currencies.forEach(curr => {
+            const val = view_mode === 'Standard' ? res_std.totals[curr] : res_req.totals[curr];
+            sharedFooter += `<div class="text-center py-3 bg-slate-50 font-bold text-lg">
+                TOTAL ${curr} <span class="text-xl">${val.toFixed(2)}</span>
+            </div>`;
+        });
+    }
 
     const container = view_mode === 'Comparison'
-        ? `<div class="comparison-container">${left}${right}</div>`
-        : `<div class="max-w-3xl mx-auto">${left || right}</div>`;
+        ? `<div>${left}${right}${sharedFooter}</div>`
+        : `<div class="max-w-3xl mx-auto">${left || right}${sharedFooter}</div>`;
 
     return `<div class="xl-wrapper">${cargo_html}${container}</div>`;
 }
@@ -955,4 +966,5 @@
     </script>
 </body>
 </html>
+
 
