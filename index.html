@@ -186,19 +186,21 @@
         .comp-item-curr { text-align: right; color: #94a3b8; font-weight: 500; width: 10%; }
         .comp-item-amt { text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace; width: 20%; }
 
-        /* --- CARD FOOTER (Restored for Layout) --- */
+        /* --- CARD FOOTER (Enhanced for Totals & Diffs) --- */
         .comp-footer {
             background: #fff;
             padding: 16px 20px;
             border-top: 1px solid #e2e8f0;
-            margin-top: auto; /* Pushes footer to bottom */
+            margin-top: auto;
         }
 
         .comp-total-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 4px;
         }
+        .comp-total-row:last-child { margin-bottom: 0; }
 
         .comp-total-label {
             font-size: 12px;
@@ -208,21 +210,27 @@
         }
 
         .comp-total-value {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 800;
             color: #0f172a;
             font-family: 'Inter', sans-serif;
             font-variant-numeric: tabular-nums;
         }
 
+        /* Dashed Separator */
+        .comp-footer-separator {
+            border-top: 1px dashed #cbd5e1;
+            margin: 12px 0;
+        }
+
+        /* Diff Section */
         .comp-diff-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed #cbd5e1;
+            margin-bottom: 4px;
         }
+        .comp-diff-row:last-child { margin-bottom: 0; }
 
         .diff-label { font-weight: 700; font-size: 12px; color: #d97706; text-transform: uppercase; }
         .diff-val { font-weight: 800; font-size: 16px; color: #d97706; font-family: 'Inter', sans-serif; }
@@ -553,7 +561,7 @@
             const buildCard = (type, rows, totals, title, compare_totals) => {
                 const isStd = type === 'std';
                 
-                // 1. Items
+                // 1. Items Body
                 let rows_html = rows.map(r => {
                     if (r.is_pad) return `<tr><td colspan="4" style="height:33px;">&nbsp;</td></tr>`; 
                     return `
@@ -567,52 +575,52 @@
 
                 if (!rows_html) rows_html = `<tr><td colspan="4" style="padding:40px; text-align:center; color:#cbd5e1;">No charges calculated</td></tr>`;
 
-                // 2. Footer (Totals + Diff)
-                let footer_html = "";
+                // 2. Footer Construction (Separated Totals & Diffs)
+                let footer_totals_html = "";
+                let footer_diffs_html = "";
                 
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        let diff_html = "";
+                        
+                        // A. TOTALS SECTION
+                        // Always render Total row in Comparison mode to ensure left/right alignment
+                        if (val > 0 || view_mode === 'Comparison') {
+                            footer_totals_html += `
+                                <div class="comp-total-row">
+                                    <span class="comp-total-label">TOTAL ${c}</span>
+                                    <span class="comp-total-value">${val.toFixed(2)}</span>
+                                </div>
+                            `;
+                        }
 
-                        // Only show diff on Request (Right) side in Comparison mode
+                        // B. DIFFS SECTION (Only for Right/Req card)
                         if (!isStd && compare_totals && view_mode === 'Comparison') {
                             let refVal = compare_totals[c] || 0;
                             let diff = val - refVal;
                             
+                            // Only show if diff is significant, OR render empty placeholder if you want strict vertical alignment 
+                            // (though diffs usually just stack at the bottom)
                             if (Math.abs(diff) > 0.01) {
                                 let sign = diff > 0 ? "+" : "";
                                 let valClass = diff > 0 ? "pos" : "neg";
-                                diff_html = `
+                                footer_diffs_html += `
                                     <div class="comp-diff-row">
                                         <span class="diff-label">DIFF ${c}</span>
                                         <span class="diff-val ${valClass}">${sign}${diff.toFixed(2)}</span>
                                     </div>
                                 `;
-                            } else {
-                                diff_html = `
-                                    <div class="comp-diff-row">
-                                        <span class="diff-label" style="color:#94a3b8">DIFF ${c}</span>
-                                        <span class="diff-val" style="color:#94a3b8">0.00</span>
-                                    </div>
-                                `;
-                            }
-                        }
-
-                        if (val > 0 || view_mode === 'Comparison') {
-                            footer_html += `
-                                <div>
-                                    <div class="comp-total-row">
-                                        <span class="comp-total-label">TOTAL ${c}</span>
-                                        <span class="comp-total-value">${val.toFixed(2)}</span>
-                                    </div>
-                                    ${diff_html}
-                                </div>
-                            `;
+                            } 
                         }
                     });
                 } else {
-                    footer_html = `<div class="comp-total-row"><span class="comp-total-label">TOTAL</span><span class="comp-total-value">0.00</span></div>`;
+                    footer_totals_html = `<div class="comp-total-row"><span class="comp-total-label">TOTAL</span><span class="comp-total-value">0.00</span></div>`;
+                }
+
+                // Assemble Footer
+                let footer_content = footer_totals_html;
+                if (footer_diffs_html) {
+                    footer_content += `<div class="comp-footer-separator"></div>` + footer_diffs_html;
                 }
 
                 return `
@@ -625,7 +633,7 @@
                             <table class="comp-table"><tbody>${rows_html}</tbody></table>
                         </div>
                         <div class="comp-footer">
-                            ${footer_html}
+                            ${footer_content}
                         </div>
                     </div>
                 `;
