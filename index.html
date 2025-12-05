@@ -59,7 +59,6 @@
         /* Tabs */
         .dest-tabs { display: flex; gap: 8px; margin-bottom: 24px; padding: 4px; background: #f1f5f9; border-radius: 8px; width: fit-content; }
         .dest-tab-btn { padding: 8px 24px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--dest-secondary); border: 1px solid transparent; transition: 0.2s; }
-        .dest-tab-btn:hover { color: #0f172a; background: rgba(255,255,255,0.5); }
         .dest-tab-btn.active { background: white; color: var(--dest-primary); border-color: var(--dest-border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
         /* Custom Buttons */
@@ -496,16 +495,25 @@
                     let amt_high = (rt > 5 && (tons > 0 ? (cbm/tons) : 0) >= 5) ? (d.high * rt) : 0.0;
                     let calculated_amt = Math.max(amt_high, amt_weight);
                     let pier_total = 0.0;
-                    let desc_line2 = "";
+                    let applied_type = "";
 
                     if (calculated_amt < d.min) {
                         pier_total = d.min;
-                        desc_line2 = `<span class="min-highlight">[MIN ${d.min.toFixed(2)}]</span>`;
+                        applied_type = "MIN RATE";
                     } else {
                         pier_total = calculated_amt;
-                        desc_line2 = amt_high > amt_weight ? `<span class="min-highlight">[HIGH VOL]</span>` : (avg_pkg_weight > 20 ? `<span class="min-highlight">[HEAVY]</span>` : `<span class="min-highlight">[LIGHT]</span>`);
+                        if (amt_high > amt_weight) {
+                            applied_type = "BULK RATE"; 
+                        } else {
+                            if (avg_pkg_weight > 20) applied_type = "HEAVY RATE";
+                            else applied_type = "LIGHT RATE";
+                        }
                     }
-                    rows.push({'item': 'PIER CHARGES', 'desc': `${s_curr} >20k:${d.heavy}/T | <20k:${d.light}/T | HiVol:${d.high}/RT | MIN:${d.min.toFixed(2)} ${desc_line2}`, 'curr': s_curr, 'amount': pier_total});
+
+                    // Format: EUR 59.38/TON (>20kg) | 74.5/TON (<20kg) | 12/RT (Ratio ≥5) | MIN 46.00 [APPLIED: HEAVY RATE]
+                    let desc = `${s_curr} ${d.heavy}/TON (>20kg) | ${d.light}/TON (<20kg) | ${d.high}/RT (Ratio ≥5) | MIN ${d.min.toFixed(2)} <span class="min-highlight">[APPLIED: ${applied_type}]</span>`;
+
+                    rows.push({'item': 'PIER CHARGES', 'desc': desc, 'curr': s_curr, 'amount': pier_total});
                 }
                 else if (section.type === 'stor') {
                     let s_rate = d.rate;
