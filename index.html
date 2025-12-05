@@ -157,9 +157,11 @@
 
         /* Table Content */
         .comp-body {
-            flex: 1;
+            flex: 1; /* This ensures both cards stretch to equal height */
             padding: 0;
             min-height: 100px;
+            display: flex;
+            flex-direction: column;
         }
 
         .comp-table {
@@ -184,82 +186,48 @@
         .comp-item-curr { text-align: right; color: #94a3b8; font-weight: 500; width: 10%; }
         .comp-item-amt { text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace; width: 20%; }
 
-        /* --- NEW BOTTOM SUMMARY SECTION --- */
-        .summary-box {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-top: 10px;
-        }
-
-        .summary-header {
-            background: #0f172a;
-            color: white;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 8px 20px;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr; /* 3 Columns Side by Side */
-            divide-x: 1px solid #e2e8f0;
-        }
-        
-        /* When not in comparison mode, we might change grid */
-        .summary-grid.single-mode {
-            grid-template-columns: 1fr;
-        }
-
-        .summary-cell {
+        /* --- CARD FOOTER (Restored for Layout) --- */
+        .comp-footer {
+            background: #fff;
             padding: 16px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            border-right: 1px solid #f1f5f9;
+            border-top: 1px solid #e2e8f0;
+            margin-top: auto; /* Pushes footer to bottom */
         }
-        .summary-cell:last-child { border-right: none; }
 
-        .sum-label {
-            font-size: 11px;
+        .comp-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .comp-total-label {
+            font-size: 12px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
         }
 
-        .sum-value {
-            font-size: 20px;
+        .comp-total-value {
+            font-size: 18px;
             font-weight: 800;
             color: #0f172a;
             font-family: 'Inter', sans-serif;
             font-variant-numeric: tabular-nums;
         }
 
-        /* Diff styling in the bottom bar */
-        .sum-diff-val {
-            font-size: 20px;
-            font-weight: 800;
-            font-family: 'Inter', sans-serif;
-            font-variant-numeric: tabular-nums;
+        .comp-diff-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #cbd5e1;
         }
-        .text-pos { color: #b91c1c; }
-        .text-neg { color: #15803d; }
-        .text-neu { color: #94a3b8; }
 
-        .sum-diff-pill {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            width: fit-content;
-        }
-        .bg-pos { background: #fee2e2; color: #b91c1c; }
-        .bg-neg { background: #dcfce7; color: #15803d; }
+        .diff-label { font-weight: 700; font-size: 12px; color: #d97706; text-transform: uppercase; }
+        .diff-val { font-weight: 800; font-size: 16px; color: #d97706; font-family: 'Inter', sans-serif; }
+        .diff-val.pos { color: #b91c1c; } /* Red for expensive */
+        .diff-val.neg { color: #15803d; } /* Green for savings */
 
         /* Input focus rings */
         input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
@@ -581,10 +549,11 @@
                 while (rows_req.length < max_len) rows_req.push({ is_pad: true });
             }
 
-            // --- BUILDER FUNCTION FOR ITEM COLUMNS (No Footers inside) ---
-            const buildCard = (type, rows, title) => {
+            // --- CARD BUILDER ---
+            const buildCard = (type, rows, totals, title, compare_totals) => {
                 const isStd = type === 'std';
                 
+                // 1. Items
                 let rows_html = rows.map(r => {
                     if (r.is_pad) return `<tr><td colspan="4" style="height:33px;">&nbsp;</td></tr>`; 
                     return `
@@ -598,6 +567,54 @@
 
                 if (!rows_html) rows_html = `<tr><td colspan="4" style="padding:40px; text-align:center; color:#cbd5e1;">No charges calculated</td></tr>`;
 
+                // 2. Footer (Totals + Diff)
+                let footer_html = "";
+                
+                if (active_currencies.length > 0) {
+                    active_currencies.forEach(c => {
+                        let val = totals[c] || 0;
+                        let diff_html = "";
+
+                        // Only show diff on Request (Right) side in Comparison mode
+                        if (!isStd && compare_totals && view_mode === 'Comparison') {
+                            let refVal = compare_totals[c] || 0;
+                            let diff = val - refVal;
+                            
+                            if (Math.abs(diff) > 0.01) {
+                                let sign = diff > 0 ? "+" : "";
+                                let valClass = diff > 0 ? "pos" : "neg";
+                                diff_html = `
+                                    <div class="comp-diff-row">
+                                        <span class="diff-label">DIFF ${c}</span>
+                                        <span class="diff-val ${valClass}">${sign}${diff.toFixed(2)}</span>
+                                    </div>
+                                `;
+                            } else {
+                                diff_html = `
+                                    <div class="comp-diff-row">
+                                        <span class="diff-label" style="color:#94a3b8">DIFF ${c}</span>
+                                        <span class="diff-val" style="color:#94a3b8">0.00</span>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        if (val > 0 || view_mode === 'Comparison') {
+                            footer_html += `
+                                <div>
+                                    <div class="comp-total-row">
+                                        <span class="comp-total-label">TOTAL ${c}</span>
+                                        <span class="comp-total-value">${val.toFixed(2)}</span>
+                                    </div>
+                                    ${diff_html}
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    footer_html = `<div class="comp-total-row"><span class="comp-total-label">TOTAL</span><span class="comp-total-value">0.00</span></div>`;
+                }
+
                 return `
                     <div class="comparison-col">
                         <div class="comp-header ${isStd ? 'std' : 'req'}">
@@ -607,98 +624,24 @@
                         <div class="comp-body">
                             <table class="comp-table"><tbody>${rows_html}</tbody></table>
                         </div>
+                        <div class="comp-footer">
+                            ${footer_html}
+                        </div>
                     </div>
                 `;
             };
 
-            // --- BUILD SEPARATE BOTTOM SUMMARY ---
-            let summary_html = "";
-            if (active_currencies.length > 0) {
-                // We create a row for each active currency
-                let grid_html = "";
-                
-                active_currencies.forEach(c => {
-                    let stdVal = res_std.totals[c] || 0;
-                    let reqVal = res_req.totals[c] || 0;
-                    
-                    // Difference Logic
-                    let diff_html = `<span class="text-neu">--</span>`;
-                    if (view_mode === 'Comparison') {
-                        let diff = reqVal - stdVal; 
-                        let sign = diff > 0 ? "+" : "";
-                        let colorClass = diff > 0 ? "text-pos" : (diff < 0 ? "text-neg" : "text-neu");
-                        let pillClass = diff > 0 ? "bg-pos" : (diff < 0 ? "bg-neg" : "bg-slate-100");
-                        
-                        if(Math.abs(diff) > 0.01) {
-                            diff_html = `
-                                <div class="sum-diff-val ${colorClass}">${sign}${diff.toFixed(2)}</div>
-                                <div class="sum-diff-pill ${pillClass}">DIFFERENCE</div>
-                            `;
-                        } else {
-                            diff_html = `<span class="sum-diff-val text-neu">0.00</span>`;
-                        }
-                    }
-
-                    // Render Cells based on View Mode
-                    if (view_mode === 'Comparison') {
-                        // 3-Column Layout: Std | Req | Diff
-                        grid_html += `
-                            <div class="summary-cell">
-                                <span class="sum-label">Standard (${c})</span>
-                                <span class="sum-value">${stdVal.toFixed(2)}</span>
-                            </div>
-                            <div class="summary-cell">
-                                <span class="sum-label">Requested (${c})</span>
-                                <span class="sum-value">${reqVal.toFixed(2)}</span>
-                            </div>
-                            <div class="summary-cell">
-                                <span class="sum-label">Difference (${c})</span>
-                                ${diff_html}
-                            </div>
-                        `;
-                    } else if (view_mode === 'Standard') {
-                        grid_html += `
-                            <div class="summary-cell">
-                                <span class="sum-label">Total Standard (${c})</span>
-                                <span class="sum-value">${stdVal.toFixed(2)}</span>
-                            </div>
-                        `;
-                    } else {
-                         grid_html += `
-                            <div class="summary-cell">
-                                <span class="sum-label">Total Requested (${c})</span>
-                                <span class="sum-value">${reqVal.toFixed(2)}</span>
-                            </div>
-                        `;
-                    }
-                });
-
-                let gridClass = view_mode === 'Comparison' ? 'summary-grid' : 'summary-grid single-mode';
-
-                summary_html = `
-                    <div class="summary-box">
-                        <div class="summary-header">Financial Summary</div>
-                        <div class="${gridClass}">
-                            ${grid_html}
-                        </div>
-                    </div>
-                `;
-            } else {
-                summary_html = `<div class="xl-info-box" style="justify-content:center;">No charges to summarize.</div>`;
-            }
-
-
-            let left = (view_mode !== 'Requested') ? buildCard('std', rows_std, title_std) : "";
-            let right = (view_mode !== 'Standard') ? buildCard('req', rows_req, title_req) : "";
+            let left = (view_mode !== 'Requested') ? buildCard('std', rows_std, res_std.totals, title_std, null) : "";
+            let right = (view_mode !== 'Standard') ? buildCard('req', rows_req, res_req.totals, title_req, res_std.totals) : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
                 container_html = `<div class="comparison-container">${left}${right}</div>`;
             } else {
-                container_html = `<div style="max-width: 600px; margin: 0 auto 20px auto;">${left || right}</div>`;
+                container_html = `<div style="max-width: 600px; margin: 0 auto;">${left || right}</div>`;
             }
 
-            return `<div class='xl-wrapper'>${cargo_html}${container_html}${summary_html}</div>`;
+            return `<div class='xl-wrapper'>${cargo_html}${container_html}</div>`;
         }
 
         // --- CALCULATOR COMPONENT ---
