@@ -102,11 +102,18 @@
         .xl-wrapper { margin-top: 10px; }
         .xl-info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; margin-bottom: 20px; border-radius: 6px; font-size: 13px; color: #64748b; display: flex; gap: 20px; align-items: center; }
 
+        /* Layout Structure */
         .comparison-container { 
-            display: flex; 
-            gap: 20px; 
-            align-items: stretch; 
+            display: flex;
+            flex-direction: column; 
+            gap: 0;
             margin-bottom: 20px;
+        }
+
+        .tables-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
         }
 
         /* The Individual Column Card */
@@ -127,7 +134,9 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
         }
 
-        @media (max-width: 768px) { .comparison-container { flex-direction: column; } }
+        @media (max-width: 768px) { 
+            .tables-wrapper { flex-direction: column; } 
+        }
 
         /* Header Areas */
         .comp-header {
@@ -157,7 +166,7 @@
 
         /* Table Content */
         .comp-body {
-            flex: 1; /* This ensures both cards stretch to equal height */
+            flex: 1; /* This ensures footer pushes to bottom */
             padding: 0;
             min-height: 100px;
             display: flex;
@@ -186,7 +195,7 @@
         .comp-item-curr { text-align: right; color: #94a3b8; font-weight: 500; width: 10%; }
         .comp-item-amt { text-align: right; font-weight: 600; font-family: 'JetBrains Mono', monospace; width: 20%; }
 
-        /* --- CARD FOOTER (Enhanced for Totals & Diffs) --- */
+        /* --- CARD FOOTER (Totals) --- */
         .comp-footer {
             background: #fff;
             padding: 16px 20px;
@@ -217,29 +226,46 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Dashed Separator */
-        .comp-footer-separator {
+        /* New Diff Section Styles */
+        .diff-section {
+            margin-top: 12px;
+            padding-top: 12px;
             border-top: 1px dashed #cbd5e1;
-            margin: 12px 0;
-        }
-
-        /* Diff Section */
-        .comp-diff-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
+            justify-content: flex-end;
         }
-        .comp-diff-row:last-child { margin-bottom: 0; }
-
-        .diff-label { font-weight: 700; font-size: 12px; color: #d97706; text-transform: uppercase; }
-        .diff-val { font-weight: 800; font-size: 16px; color: #d97706; font-family: 'Inter', sans-serif; }
-        .diff-val.pos { color: #b91c1c; } /* Red for expensive */
-        .diff-val.neg { color: #15803d; } /* Green for savings */
+        
+        .diff-values {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-end;
+        }
+        
+        .diff-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .diff-label-ext { font-weight: 700; color: #64748b; font-size: 12px; text-transform: uppercase; }
+        .diff-val-ext { font-weight: 800; font-size: 16px; }
+        .diff-val-ext.pos { color: #15803d; } /* Green (Savings) */
+        .diff-val-ext.neg { color: #b91c1c; } /* Red (Cost) */
 
         /* Input focus rings */
         input:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1"
+  }
+}
+</script>
 </head>
 <body class="text-slate-800 antialiased">
 
@@ -557,8 +583,30 @@
                 while (rows_req.length < max_len) rows_req.push({ is_pad: true });
             }
 
+            // 1. Calculate Diffs (Global for the report)
+            let diffs_html = "";
+            if (view_mode === 'Comparison') {
+                 active_currencies.forEach(c => {
+                    let stdVal = res_std.totals[c] || 0;
+                    let reqVal = res_req.totals[c] || 0;
+                    let diff = stdVal - reqVal;
+
+                    if (Math.abs(diff) > 0.01) {
+                         let sign = diff > 0 ? "+" : "";
+                         let valClass = diff > 0 ? "pos" : "neg";
+                         
+                         diffs_html += `
+                            <div class="diff-row">
+                                <span class="diff-label-ext">DIFF ${c}:</span>
+                                <span class="diff-val-ext ${valClass}">${sign}${diff.toFixed(2)}</span>
+                            </div>
+                         `;
+                    }
+                 });
+            }
+
             // --- CARD BUILDER ---
-            const buildCard = (type, rows, totals, title, compare_totals) => {
+            const buildCard = (type, rows, totals, title) => {
                 const isStd = type === 'std';
                 
                 // 1. Items Body
@@ -575,16 +623,12 @@
 
                 if (!rows_html) rows_html = `<tr><td colspan="4" style="padding:40px; text-align:center; color:#cbd5e1;">No charges calculated</td></tr>`;
 
-                // 2. Footer Construction (Separated Totals & Diffs)
+                // 2. Footer Construction (Totals Only)
                 let footer_totals_html = "";
-                let footer_diffs_html = "";
                 
                 if (active_currencies.length > 0) {
                     active_currencies.forEach(c => {
                         let val = totals[c] || 0;
-                        
-                        // A. TOTALS SECTION
-                        // Always render Total row in Comparison mode to ensure left/right alignment
                         if (val > 0 || view_mode === 'Comparison') {
                             footer_totals_html += `
                                 <div class="comp-total-row">
@@ -593,34 +637,9 @@
                                 </div>
                             `;
                         }
-
-                        // B. DIFFS SECTION (Only for Right/Req card)
-                        if (!isStd && compare_totals && view_mode === 'Comparison') {
-                            let refVal = compare_totals[c] || 0;
-                            let diff = val - refVal;
-                            
-                            // Only show if diff is significant, OR render empty placeholder if you want strict vertical alignment 
-                            // (though diffs usually just stack at the bottom)
-                            if (Math.abs(diff) > 0.01) {
-                                let sign = diff > 0 ? "+" : "";
-                                let valClass = diff > 0 ? "pos" : "neg";
-                                footer_diffs_html += `
-                                    <div class="comp-diff-row">
-                                        <span class="diff-label">DIFF ${c}</span>
-                                        <span class="diff-val ${valClass}">${sign}${diff.toFixed(2)}</span>
-                                    </div>
-                                `;
-                            } 
-                        }
                     });
                 } else {
                     footer_totals_html = `<div class="comp-total-row"><span class="comp-total-label">TOTAL</span><span class="comp-total-value">0.00</span></div>`;
-                }
-
-                // Assemble Footer
-                let footer_content = footer_totals_html;
-                if (footer_diffs_html) {
-                    footer_content += `<div class="comp-footer-separator"></div>` + footer_diffs_html;
                 }
 
                 return `
@@ -633,18 +652,30 @@
                             <table class="comp-table"><tbody>${rows_html}</tbody></table>
                         </div>
                         <div class="comp-footer">
-                            ${footer_content}
+                            ${footer_totals_html}
                         </div>
                     </div>
                 `;
             };
 
-            let left = (view_mode !== 'Requested') ? buildCard('std', rows_std, res_std.totals, title_std, null) : "";
-            let right = (view_mode !== 'Standard') ? buildCard('req', rows_req, res_req.totals, title_req, res_std.totals) : "";
+            let left = (view_mode !== 'Requested') ? buildCard('std', rows_std, res_std.totals, title_std) : "";
+            let right = (view_mode !== 'Standard') ? buildCard('req', rows_req, res_req.totals, title_req) : "";
 
             let container_html = "";
             if (view_mode === 'Comparison') {
-                container_html = `<div class="comparison-container">${left}${right}</div>`;
+                container_html = `
+                    <div class="comparison-container">
+                        <div class="tables-wrapper">
+                            ${left}
+                            ${right}
+                        </div>
+                        <div class="diff-section">
+                            <div class="diff-values">
+                                ${diffs_html}
+                            </div>
+                        </div>
+                    </div>
+                `;
             } else {
                 container_html = `<div style="max-width: 600px; margin: 0 auto;">${left || right}</div>`;
             }
