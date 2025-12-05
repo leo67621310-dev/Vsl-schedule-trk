@@ -840,12 +840,28 @@
                 const resReq = calculateCharges(parseFloat(globals.cbm), parseFloat(globals.kgs), parseInt(globals.pkgs), reqData.sections, reqData.items);
                 let summary = {};
                 CURRENCIES.forEach(c => { if(resStd.totals[c] > 0 || resReq.totals[c] > 0) summary[c] = { std: resStd.totals[c], diff: resStd.totals[c] - resReq.totals[c] }; });
-                const newHist = { id: Date.now(), timestamp: new Date().toLocaleTimeString(), ref: globals.ref || "No Ref", cbm: globals.cbm, summary, snap_std: stdData, snap_req: reqData };
+                const newHist = { 
+                    id: Date.now(), 
+                    timestamp: new Date().toLocaleTimeString(), 
+                    ref: globals.ref || "No Ref", 
+                    cbm: globals.cbm, 
+                    kgs: globals.kgs,
+                    pkgs: globals.pkgs,
+                    summary, 
+                    snap_std: stdData, 
+                    snap_req: reqData 
+                };
                 setHistory([newHist, ...history].slice(0, 50));
             };
 
             const loadHistory = (h) => {
-                setGlobals(p => ({ ...p, ref: h.ref, cbm: h.cbm }));
+                setGlobals(p => ({ 
+                    ...p, 
+                    ref: h.ref, 
+                    cbm: h.cbm,
+                    kgs: h.kgs !== undefined ? h.kgs : p.kgs,
+                    pkgs: h.pkgs !== undefined ? h.pkgs : p.pkgs
+                }));
                 setStdData(h.snap_std);
                 setReqData(h.snap_req);
             };
@@ -1055,7 +1071,7 @@
                                     <div key={h.id} onClick={() => loadHistory(h)} className="bg-slate-50 border border-slate-100 p-3 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-200 group relative transition-all">
                                         <button onClick={(e) => {e.stopPropagation(); deleteHistory(h.id);}} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.Trash2 size={14} /></button>
                                         <div className="font-bold text-xs text-blue-600 mb-1">{h.ref}</div>
-                                        <div className="text-[10px] text-slate-400 mb-2">{h.timestamp} | {h.cbm} m³</div>
+                                        <div className="text-[10px] text-slate-400 mb-2">{h.timestamp} | {h.cbm} m³ | {h.kgs || 0} kg | {h.pkgs || 0} pkgs</div>
                                         {Object.entries(h.summary).map(([curr, val]) => (
                                             <div key={curr} className="flex justify-between text-[10px]">
                                                 <span className="text-slate-600">{curr} {val.std.toFixed(2)}</span>
